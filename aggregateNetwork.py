@@ -11,6 +11,8 @@ import SWMMtoWESTConstants as STW_C
 
 #Files with functions
 import convertSWMMToWEST as cw
+import findPaths as fp
+import getNetworkFromSWMM as gnpd
 
 
 #types of aggregation
@@ -208,3 +210,27 @@ def lookForOtherPipesConnected(linksPath,allLinks,fileOut):
     outNodesNoZeros = pipesConnected[pipesConnected.index.isin(tsDFNoZeros.columns.to_list())]
     
     return tsDFNoZeros, outNodesNoZeros
+
+
+def aggregateTrunk(networkInp, idWTP, idTrunkIni, linkMeasurementFlow):
+
+    #Gets all the elements from the network used
+    nElements, outfile = gnpd.getsNetwork(networkInp)
+    links = nElements[STW_C.LINKS]
+
+    #Get all paths from leaves to water treatment plant
+    pathsAll = fp.getPathToWTP(idWTP,links,nElements[STW_C.LEAVES])
+
+    #---------------------------------------------------------------------------------
+    #Get St sacrament path as df
+    #Pipes in the path are in order from downstream to upstream
+    trunkDF = convertListPathtoDF(pathsAll[idTrunkIni],links)
+
+    #Gets the pipes connected to the path but not part of it with their flow timeseries
+    timeSeriesPointsCon, pointsConnected  = lookForOtherPipesConnected(trunkDF,links,outfile)
+    
+    #converts the path from st sacrement to the WTP into sewer sections
+    pipesModels, catchmentsModels = convertPathToSwrSectAndCatchts(trunkDF,nElements,timeSeriesPointsCon, pointsConnected,linkMeasurementFlow) 
+
+    return pipesModels, catchmentsModels
+
