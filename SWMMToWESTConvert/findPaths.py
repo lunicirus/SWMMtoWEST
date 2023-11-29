@@ -1,5 +1,5 @@
 
-import SWMM_InpConstants as SWWM_C
+import SWMMToWESTConvert.SWMM_InpConstants as SWWM_C
 
 
 #Adds the linkOut to the path 

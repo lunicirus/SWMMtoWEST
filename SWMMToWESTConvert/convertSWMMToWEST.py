@@ -2,8 +2,8 @@ import math
 import numpy as np
 from datetime import datetime, timedelta
 
-import SWMMtoWESTConstants as STW_C
-import SWMM_InpConstants as SWMM_C
+import SWMMToWESTConvert.SWMMtoWESTConstants as STW_C
+import SWMMToWESTConvert.SWMM_InpConstants as SWMM_C
 
 #hydraulic constants
 VISCO = 1.0035*(10**-6)*60*60*24 #m2/d

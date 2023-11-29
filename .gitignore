@@ -3,4 +3,15 @@ DWF2022.inp
 DWF2022.rpt
 DWF2022.out
 02-Output/03-NewWEST46Sections/Project46SectionsMod.Layout.xml
-01-Data/05-NewWESTModel46Sections/Project46Sections.Layout.xml
+SWMMToWESTConvert/__pycache__/aggregateNetwork.cpython-310.pyc
+SWMMToWESTConvert/__pycache__/convertSWMMToWEST.cpython-310.pyc
+SWMMToWESTConvert/__pycache__/findPaths.cpython-310.pyc
+SWMMToWESTConvert/__pycache__/getNetworkFromSWMM.cpython-310.pyc
+SWMMToWESTConvert/__pycache__/SWMM_InpConstants.cpython-310.pyc
+SWMMToWESTConvert/__pycache__/SWMMtoWESTConstants.cpython-310.pyc
+SWMMToWESTConvert/__pycache__/updateWESTfiles.cpython-310.pyc
+SWMMToWESTConvert/__pycache__/WESTConstants.cpython-310.pyc
+01-Data/02-WESTResults/01-46SectionsCompleteResults.csv
+01-Data/04-PCSWMMResults/01-ModelFlowsDWF2022.csv
+01-Data/01-NewWESTModel46Sections/Project46Sections.Layout.xml
+01-Data/03-FlowmeterData/01-FlowrateMeassurements.csv

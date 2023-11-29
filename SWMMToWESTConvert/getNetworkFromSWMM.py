@@ -2,8 +2,8 @@ import swmmio
 import os
 from itertools import chain
 
-import SWMM_InpConstants as SWWM_C
-import SWMMtoWESTConstants as STW_C
+import SWMMToWESTConvert.SWMM_InpConstants as SWWM_C
+import SWMMToWESTConvert.SWMMtoWESTConstants as STW_C
 
 
 #ONLY WORKS IF THERE ARE NOT PATTERNS DIFFERENT FROM HOURLY!!! TODO

@@ -5,14 +5,14 @@ from swmm.toolkit.shared_enum import LinkAttribute
 
 
 #Files with constants
-import SWMM_InpConstants as SWWM_C
-import SWMMtoWESTConstants as STW_C
+import SWMMToWESTConvert.SWMM_InpConstants as SWWM_C
+import SWMMToWESTConvert.SWMMtoWESTConstants as STW_C
 
 
 #Files with functions
-import convertSWMMToWEST as cw
-import findPaths as fp
-import getNetworkFromSWMM as gnpd
+import SWMMToWESTConvert.convertSWMMToWEST as cw
+import SWMMToWESTConvert.findPaths as fp
+import SWMMToWESTConvert.getNetworkFromSWMM as gnpd
 
 
 #types of aggregation

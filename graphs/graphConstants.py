@@ -1,0 +1,31 @@
+
+#Names ----------------
+
+
+
+#Colors---------------
+PASCAL_C="#FFFF66"
+PASCAL_C2="#FFE599"
+
+STSACRA_C= "#D40AA8"
+STSACRA_C2="#DB4DBC"
+STSACRA_C3="#A10880"
+
+BEAU_C = "#7771B2"
+BEAU_C2 = "#6554FF"
+
+EST_C = "#13BE89"
+EST_C2 = "#33FFBE"
+EST_C3 = "#0BD65C"
+
+LIMOLI_C = "#12B1BF"
+LIMOLI_C2 ="#30EEFF"
+LIMOLI_C3 = "#0D828C"
+
+NOEST_C = "#FF9933"
+NOEST_C2 = "#FFBF80"
+NOEST_C3 = "#806040"
+
+
+RAIN_C="#5AE3EF"
+#-------------------------

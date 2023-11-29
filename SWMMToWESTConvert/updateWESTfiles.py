@@ -2,8 +2,8 @@ import xml.etree.ElementTree as ET
 import re
 
 
-import WESTConstants as W_C
-import SWMMtoWESTConstants as STW_C
+import SWMMToWESTConvert.WESTConstants as W_C
+import SWMMToWESTConvert.SWMMtoWESTConstants as STW_C
 
 
 #Utils of Xml files
