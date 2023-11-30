@@ -7,12 +7,12 @@ import matplotlib.colors as mcolors
 #- factor: Darkening factor (default is 0.7)
 #Returns:
 #- Darkened color in hex format.
-def darken_hex_color(hex_color, factor=0.7):
+def darken_hex_color(hex_color, factor=0.5):
     
     rgb_color = mcolors.hex2color(hex_color)
     darkened_rgb = [int(component * factor) for component in rgb_color]
     darkened_hex = mcolors.rgb2hex(darkened_rgb)
-    
+
     return darkened_hex
 
 

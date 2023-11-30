@@ -42,7 +42,7 @@ def processMeassuredData(file):
 
 # assumes values are in CMS, m3/s
 # returns values in m3/h
-def getModelData(file,renameDict=None):
+def getModelData(file,startDate,endDate,renameDict=None):
 
     # create a dataframe with the data from the file 
     flowModelVals = pd.read_csv(file, delimiter = ',')
@@ -56,6 +56,9 @@ def getModelData(file,renameDict=None):
 
     # convert values to m3/h
     flowModelValsm3h = flowModelVals*3600
+
+    # Removes values outside the evaluated period
+    flowModelValsm3h = flowModelValsm3h[(flowModelValsm3h.index >= startDate)&(flowModelValsm3h.index < endDate)]
 
     # renames columns
     #flowModelVals.rename(columns={LIMOILOU_COL: "Limoilou", PASCAL_COL: "Pascal", STSACRA_C:"St-Sacrement"},inplace=True)
