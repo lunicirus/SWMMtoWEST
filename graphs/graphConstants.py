@@ -1,6 +1,14 @@
 
 #Names ----------------
 
+WTP = "WTP"
+STSACRA_TO_LIMOLIOU = "StSacra-Limoliou"
+PASCAL = "Pascal"
+
+#MOD_SUFFIX = ' MODEL' 
+
+DATE_LBL = 'Date'
+LONGDATE_LBL = "LongDate"
 
 
 #Colors---------------

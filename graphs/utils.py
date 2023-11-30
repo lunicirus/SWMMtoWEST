@@ -1,4 +1,20 @@
 
+import matplotlib.colors as mcolors
+
+#Darken a color in hex format by multiplying each RGB component by a factor.
+#Parameters:
+#- hex_color: String representing the color in hex format (e.g., "#FF0000" for red)
+#- factor: Darkening factor (default is 0.7)
+#Returns:
+#- Darkened color in hex format.
+def darken_hex_color(hex_color, factor=0.7):
+    
+    rgb_color = mcolors.hex2color(hex_color)
+    darkened_rgb = [int(component * factor) for component in rgb_color]
+    darkened_hex = mcolors.rgb2hex(darkened_rgb)
+    
+    return darkened_hex
+
 
 def removeTopRightFrame(ax):
     

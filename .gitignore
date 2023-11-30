@@ -15,3 +15,13 @@ SWMMToWESTConvert/__pycache__/WESTConstants.cpython-310.pyc
 01-Data/04-PCSWMMResults/01-ModelFlowsDWF2022.csv
 01-Data/01-NewWESTModel46Sections/Project46Sections.Layout.xml
 01-Data/03-FlowmeterData/01-FlowrateMeassurements.csv
+graphs/__pycache__/graphConstants.cpython-310.pyc
+graphs/__pycache__/graphFlows.cpython-310.pyc
+graphs/__pycache__/meassuresConstants.cpython-310.pyc
+graphs/__pycache__/PCSWMMConstants.cpython-310.pyc
+graphs/__pycache__/processData.cpython-310.pyc
+graphs/__pycache__/tests.cpython-310-pytest-7.4.3.pyc
+graphs/__pycache__/utils.cpython-310.pyc
+graphs/__pycache__/WESTConstants.cpython-310.pyc
+01-Data/04-PCSWMMResults/02-ModelFlowsDWF2022Complete.csv
+02-Output/01-Graphs/FlowsDWFSWMM.png
