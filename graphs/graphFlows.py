@@ -65,12 +65,12 @@ def plotComparisonsSWMM_WEST(swmm, west, fileOut, color, ppt=True):
     #plots the series of each column
     fig1, ax  = plt.subplots(figsize=(10,6)); #creates the figure
     
+    #Plots WEST values with a darker color and cutted line
+    colorD = util.light_hex_color(color)
+    west.plot(ax=ax, alpha=0.8, linewidth=2, ls='--',color= colorD);
+
     #Plots the SWMM values
     swmm.plot(ax=ax, alpha=0.8, linewidth=2 , color=color);
-
-    #Plots WEST values with a darker color and cutted line
-    colorD = util.darken_hex_color(color)
-    west.plot(ax=ax, alpha=0.8, linewidth=2, ls='--',color= colorD);
     
     if ppt:
         ax= util.modifyForPpt(ax)

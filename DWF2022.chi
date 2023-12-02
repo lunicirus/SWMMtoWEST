@@ -1,0 +1,37 @@
+#PCSWMM project file
+#Please do not edit
+[General]
+PCSWMM.NET Version=7.6.3675
+SWMM5 Version=5.2.3
+Version=3
+Map EPSG=0
+CS Name=UNKNOWN
+Last Report Date=09/06/2023 1:06:15 AM
+[2D]
+2DModeling=False
+[Project Summary]
+Compute Time=28 minutes and 23 seconds
+Routing Error=n/a
+Runoff Error=n/a
+[Authors]
+Author0=Laura Lopez,45262.5621760764
+[Layers]
+layer0=Subcatchments
+layer1=Outlets
+layer2=Weirs
+layer3=Orifices
+layer4=Pumps
+layer5=Conduits
+layer6=Storages
+layer7=Dividers
+layer8=Outfalls
+layer9=Junctions
+[Scenarios]
+"Scenarios0"="C:\Users\lllov\OneDrive - Université Laval\Desktop\01-Repositories\SWMMtoWEST\DWF2022.inp",False,False,DWF2022
+[Graph]
+Plotting Position=Gringorten
+[Erosion]
+ErosionOn=False
+Use C TS=False
+Calculate LS=False
+Use TSS=False

@@ -70,7 +70,7 @@ def getModelData(file,startDate,endDate,renameDict=None):
 
 
 #Assumes values come in m3/d, it should not have the row of units
-#Returns values in m3/h 
+#Returns values in m3/h
 def getDFWESTResults(file,startDate,endDate,dictRenames=None):
 
     WTP_WEST_Results = pd.read_csv(file, delimiter = ',')
@@ -123,7 +123,8 @@ def checkAverageColumnsIncrements(df):
         current_mean = df.iloc[:, column_index].mean()
         previous_mean = df.iloc[:, column_index - 1].mean()
 
-        if not current_mean > previous_mean:
+        if (not current_mean > previous_mean) and ((previous_mean-current_mean)*100/previous_mean > 0.5):
+            print("The column with error is: ",column_index)
             return False
 
     return True
@@ -133,8 +134,8 @@ def checkCorrectFlowWEST(df):
 
     df = sortColumnsWEST(df)
 
-    #Removes the first hours where the flow is stabilizing
-    df = df.iloc[33:,:].copy()
+    #remove the first data points coz is instable
+    df = df.iloc[20:,:]
 
     return checkAverageColumnsIncrements(df)
 
