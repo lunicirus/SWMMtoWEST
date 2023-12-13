@@ -162,7 +162,7 @@ def modifyConnectorModel(connClass, root, submodel,velTSS,velMin):
     return root
 
 #Props must be in order
-def setSewerSectionsVals(xml,xmlOut,sewerClass,propsSewer,catchClass,propsCath,connClass,connectorProps):
+def setPropertiesAndClasses(xml,xmlOut,sewerClass,propsSewer,catchClass,propsCath,connClass,connectorProps):
 
     # Read the XML file
     tree = ET.parse(xml)
