@@ -159,7 +159,7 @@ def createInputWEST(name,input,tsInputs):
 
 #Each pipe section has the name as the initial and final node of the composing pipes 
 # it has the mean of the slopes of the composing pipes, the mean (and only) diameter of the group, and the total length 
-def getPathElements(dfs,elements, initialElements,timePatterns,tSConnectedPoints):
+def getPathElementsDividingByDiam(dfs,elements, initialElements,timePatterns,tSConnectedPoints):
     
     pipesSection = []
     catchments= []
@@ -182,6 +182,8 @@ def getPathElements(dfs,elements, initialElements,timePatterns,tSConnectedPoints
                 continue
             
             for shapeType, group  in shapes:
+
+                #print("pipe: ",group.iloc[0,0], " - ", group.iloc[-1,0])
                 
                 #Creates and adds the pipe section to the list
                 sewerSect, name, n = createSewerWEST(group,shapeType,tankIndex) 
@@ -215,6 +217,67 @@ def getPathElements(dfs,elements, initialElements,timePatterns,tSConnectedPoints
                     if ~((element == 0.0) | element.isna()).all():
                         catchment = createCatchmentWEST(name, element, timePatterns)
                         catchments.append(catchment)
+    
+            
+    print("----------------------------")
+    print("Final number of pipe sections ", len(pipesSection))
+    print("Final number of catchments: ", len(catchments))
+    print("Final number of tanks in series:", pipesSection[-1][STW_C.TANK_INDEXES][-1])
+                            
+    return pipesSection, catchments
+
+
+#Each pipe section has the name as the initial and final node of the composing pipes 
+# it has the mean of the slopes of the composing pipes, the mean diameter of the group, and the total length 
+# to calculate the area it assumes the most common shape
+def getPathElements(dfs,elements, initialElements,timePatterns,tSConnectedPoints):
+    
+    pipesSection = []
+    catchments= []
+    
+    tankIndex = 1
+    firstSection = True
+    
+    #Elements are in order from upstream to downstream
+    for df in dfs:
+
+        #Removes elements with length zero (pumps, orifices or weirs)
+        df = df[df[SWMM_C.LEN].notna() & (df[SWMM_C.LEN] != 0)].copy()
+
+        #Obtains the most common shape 
+        mostCommonShape = df[SWMM_C.SHAPE].value_counts().idxmax()
+        
+        #Creates and adds the pipe section to the list
+        sewerSect, name, n = createSewerWEST(df,mostCommonShape,tankIndex) 
+        pipesSection.append(sewerSect)
+        tankIndex += n
+                
+        #Creates and adds a catchment and/or and dwf to their list if they are connected at the beggining of the path
+        if firstSection and (initialElements is not None):
+            catchment = createCatchmentWEST(name, initialElements,timePatterns,False)
+            catchments.append(catchment)
+            
+            firstSection = False
+         
+        #Creates and adds a catchment and/or a dwf to their list if they are connected to the end part of the sewer section
+        connectingPipe= df.iloc[-1,0]
+        if connectingPipe in elements.index:
+
+            element = elements.loc[connectingPipe].copy()
+            tsInput = element[STW_C.MODELED_INPUT]
+
+            #If the ts is not empty it creates an input object
+            if tsInput is not None:
+                input = createInputWEST(name, tsInput,tSConnectedPoints)
+                catchments.append(input)
+
+            element.drop(labels=STW_C.MODELED_INPUT,inplace=True)
+            element.fillna(0,inplace=True)
+            
+            #if any of the others values are different from zero or null then it creates a catchment object      
+            if ~((element == 0.0) | element.isna()).all():
+                catchment = createCatchmentWEST(name, element, timePatterns)
+                catchments.append(catchment)
     
             
     print("----------------------------")
