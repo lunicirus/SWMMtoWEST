@@ -49,7 +49,7 @@ def convertTimeSeriesIntoDWF(ts):
     return NHP_stringList, totalMean
 
 #Asumes RECT pipes have the same geom 2 than geom 1
-def calculateSewerValues(group,shapeType):
+def calculateSewerValues(group,shapeType: str):
     
     length = group[SWMM_C.LEN].sum()  #m
     name = group.iloc[0,0] + " - " + group.iloc[-1,0]
@@ -201,7 +201,7 @@ def getPathElementsDividingByDiam(dfs,elements, initialElements,timePatterns,tSC
                 connectingPipe= group.iloc[-1,0]
                 if connectingPipe in elements.index:
 
-                    #revisar que los datosno sean todos zero y si no crear catchment
+                    #check that the data is not empty or zero before creating a catchment
                     element = elements.loc[connectingPipe].copy()
                     tsInput = element[STW_C.MODELED_INPUT]
 

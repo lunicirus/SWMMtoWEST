@@ -166,7 +166,7 @@ def convertPathToSwrSectAndCatchts(linksPath, nElements,timeSeriesPointsCon, poi
     proElements = extractPathLookPoints(linksPath,lookPoints,indexbreakLinks)
    
     #separates the path by diameter and converts the group of pipes into sewer sections, catchments, and dwf
-    pipeSectionsProperties, catchmentsProperties = cw.getPathElements(pathDfs,proElements[PATH_ELEMENTS],proElements[PATH_ELEMENTS_INI],
+    pipeSectionsProperties, catchmentsProperties = cw.getPathElementsDividingByDiam(pathDfs,proElements[PATH_ELEMENTS],proElements[PATH_ELEMENTS_INI],
                                                                         nElements[STW_C.T_PATTERNS],timeSeriesPointsCon)
               
     return pipeSectionsProperties, catchmentsProperties
@@ -178,11 +178,15 @@ def lookForOtherPipesConnected(linksPath,allLinks,fileOut):
     linksPathOutNodes = linksPath.set_index(SWWM_C.NAME)[SWWM_C.OUT_NODE]
     pipesNotPath = allLinks[~allLinks.index.isin(linksPathOutNodes.index)].copy()
     assert allLinks.shape[0] == pipesNotPath.shape[0] + linksPath.shape[0]
+
+    #pipesNotPath.to_csv('pipesNotInPath.csv')
     
     #Gets links in the network connected to the path (but not part of it)
     pipesConnected = pipesNotPath[pipesNotPath[SWWM_C.OUT_NODE].isin(linksPathOutNodes)][[SWWM_C.OUT_NODE]].copy()
     pipesConnectedNames = pipesConnected.index.to_list()
     print("There are", len(pipesConnectedNames), "connections to the path")
+
+    #pipesConnected.to_csv('pipesConnected.csv')
 
     #Check that there are no more than one pipe per outnode!! TODO
     #-------TODO-------TODO-------TODO--------TODO-----TODO-----TODO
@@ -201,6 +205,8 @@ def lookForOtherPipesConnected(linksPath,allLinks,fileOut):
                     tsDF = pd.DataFrame.from_dict(ts, orient='index',columns=[pipe])
                 else:
                     tsDF = tsDF.join(pd.DataFrame.from_dict(ts, orient='index',columns=[pipe]))
+
+        #tsDF.to_csv('cleaned.csv', index=True)
     
         # remove columns with only zeros
         tsDFNoZeros = tsDF.loc[:, (tsDF != 0).any(axis=0)]
