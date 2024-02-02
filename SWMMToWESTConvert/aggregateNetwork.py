@@ -171,8 +171,9 @@ def convertPathToSwrSectAndCatchts(linksPath, nElements,timeSeriesPointsCon, poi
               
     return pipeSectionsProperties, catchmentsProperties
 
-#find the pipes connected to the path giving it flow
+#DEPRECATED
 def lookForOtherPipesConnected(linksPath,allLinks,fileOut):
+    #find the pipes connected to the path giving it flow
 
     #Gets the links that are not in the path
     linksPathOutNodes = linksPath.set_index(SWWM_C.NAME)[SWWM_C.OUT_NODE]
@@ -217,9 +218,21 @@ def lookForOtherPipesConnected(linksPath,allLinks,fileOut):
     
     return tsDFNoZeros, outNodesNoZeros
 
+#DEPRECATED
+def aggregateTrunk(networkInp:str, idWTP:str, idTrunkIni:str, linkMeasurementFlow:list[str]) -> tuple[list[dict],list[dict]]:
+    
+    """It obtains the elements of the network and converts it into a trunk with elements (catchments, DWFs, DFs) attached. 
+        Then, it converts the trunk into a list of tanks in series and the elements into a list of catchments.
+    Args:
+        networkInp (str): path to the networks .inp file
+        idWTP (str): id of the water treatment plant (where the trunk finishes)
+        idTrunkIni (str): id of the initial node of the trunk 
+        linkMeasurementFlow (list[str]): list of ids of the pipes where meassurements are taken
 
-def aggregateTrunk(networkInp, idWTP, idTrunkIni, linkMeasurementFlow):
-
+    Returns:
+         tuple[list[dict],list[dict]]: List of tanks in series (WEST models) of the trunk with its parameters, 
+                                       List of catchments (WEST models) with its parameters
+    """
     #Gets all the elements from the network used
     nElements, outfile = gnpd.getsNetwork(networkInp)
     links = nElements[STW_C.LINKS]
@@ -239,4 +252,128 @@ def aggregateTrunk(networkInp, idWTP, idTrunkIni, linkMeasurementFlow):
     pipesModels, catchmentsModels = convertPathToSwrSectAndCatchts(trunkDF,nElements,timeSeriesPointsCon, pointsConnected,linkMeasurementFlow) 
 
     return pipesModels, catchmentsModels
+
+def getPipesConnectedToTrunk(linksTrunk:pd.DataFrame, allLinks:pd.DataFrame) -> pd.DataFrame:
+    """
+        Search for pipes connected to the trunk
+    Args:
+        linksTrunk (pd.DataFrame): Links in the trunk path
+        allLinks (pd.DataFrame): All the links of the network
+
+    Returns:
+        pd.DataFrame: pipes connected to the trunk associated with the pipe just before their connection and the outnode.
+    """    
+
+    #Gets the links that are not in the path
+    linksPathOutNodes = linksTrunk.set_index(SWWM_C.NAME)[[SWWM_C.OUT_NODE]]
+    pipesNotPath = allLinks[~allLinks.index.isin(linksPathOutNodes.index)].copy()
+    assert allLinks.shape[0] == pipesNotPath.shape[0] + linksTrunk.shape[0]
+
+    #pipesNotPath.to_csv('pipesNotInPath.csv')
+    
+    #Gets links in the network connected to the path (but not part of it)
+    pipesConnected = pipesNotPath[pipesNotPath[SWWM_C.OUT_NODE].isin(linksPathOutNodes[SWWM_C.OUT_NODE])][[SWWM_C.OUT_NODE]].copy()
+    print("There are", pipesConnected.shape[0], "connections to the path")
+
+    #pipesConnected.to_csv('pipesConnected.csv')
+
+    #creates a dataframe with the name of the discharging pipe and one column with the name of the pipe of the trunk before the discharge
+    pipesConnected = pipesConnected.reset_index().set_index([SWWM_C.OUT_NODE]).join(
+                                                                            linksPathOutNodes.reset_index().set_index([SWWM_C.OUT_NODE]),
+                                                                            lsuffix=STW_C.CONNECTED_PIPE_SUFFIX, 
+                                                                            rsuffix=STW_C.TRUNK_PIPE_SUFFIX)
+    #resets the index again to name
+    pipesConnected = pipesConnected.reset_index().set_index(SWWM_C.NAME + STW_C.CONNECTED_PIPE_SUFFIX)
+
+    return pipesConnected
+
+def selectBranches(fileOut:str, pipesConnected:pd.DataFrame):    
+    """
+        It decides if it is a pipe connected to the trunk needs to be modeled in detail (tank series) or just as a catchment.
+        For this, it compares the flow timeseries of the connected pipe and the trunk before the connection. 
+        If the flow of the pipe is larger than a set limit then it is selected as a branch.
+    Args:
+        fileOut (str): Path of the .out file created by SWMM after running the model with the flowrate timeseries of the pipes
+        pipesConnected (pd.DataFrame): Df of the pipes connected to the trunk, with index the name of the pipe, 
+                                       and a column named "SWWM_C.NAME + STW_C.TRUNK_PIPE_SUFFIX" with the name of trunk pipe before the connection.
+
+    Returns:
+        tuple[list(str), pd.DataFrame, pd.DataFrame]: Connected pipes names selected as branches, timeseries of the pipes selected as catchments,
+                                                      all pipes (and their outnodes) that are modelled either as branches or catchments
+    """
+
+    tsDFCatchments = None
+    branches = []
+    trunkPipeLabel = SWWM_C.NAME + STW_C.TRUNK_PIPE_SUFFIX
+
+    with Output(fileOut) as out:
+
+        #the index is the name of the discharging pipe
+        for index, row in pipesConnected.iterrows():
+            trunkPipe = row[trunkPipeLabel]
+
+            #Gets the timeseries of the flow from the connections to the path and the pipe before the discharge
+            dfTS = gnpd.getFlowTimeSeries([index,trunkPipe])
+            maxVals = dfTS.max()
+
+            maxDischarging = maxVals[index]
+            limitFlowrate = maxVals[trunkPipe] * STW_C.PERC_LIM_TO_BRANCH
+            
+            #Checks that the values are not all zero
+            if ((dfTS[index] != 0).any()): 
+                if (maxDischarging > limitFlowrate):
+                    branches.append(index)
+                else:
+                    if tsDFCatchments is None:
+                        tsDFCatchments = dfTS.drop(columns=[trunkPipe])
+                    else:
+                        tsDFCatchments = tsDFCatchments.join(dfTS.drop(columns=[trunkPipe]))
+
+    outNodesToBreak =  pipesConnected[(pipesConnected.index.isin(branches)) | (pipesConnected.index.isin(tsDFCatchments.columns.to_list()))].drop(trunkPipeLabel, axis=1)  
+        
+    print(tsDFCatchments.shape[1]," connections to the path to be converted into catchments") 
+    print(len(branches),' connections in the path to be modelled as branches')
+
+    return branches,tsDFCatchments,outNodesToBreak
+
+def aggregateTrunkAndBranches(networkInp : str, idWTP: str, idTrunkIni: str, linkMeasurementFlow: list[str]):
+    """Converts a detailed network into a trunk with branches and elements attached.
+       Then it converts the trunk and branches into tank in series models and all other elements
+       are into catchments models. Models are returned as dictionaries. 
+    Args:
+        networkInp (str): .inp of a detailed hydraulic wastewater network that has been previously run in SWwM so it has an associated .out file too.
+        idWTP (str): name of the WRRF in the .inp
+        idTrunkIni (str): name of the the main trunk's initial node of the .inp
+        linkMeasurementFlow (list[str]): list of pipe names from the .inp where measurements are avaliable
+
+    Returns:
+        _type_: _description_ TODO 
+    """    
+
+    #Gets all the elements from the network used
+    nElements, outfile = gnpd.getsNetwork(networkInp)
+    links = nElements[STW_C.LINKS]
+
+    #Get all paths from leaves to water treatment plant
+    pathsAll = fp.getPathToWTP(idWTP,links,nElements[STW_C.LEAVES])
+
+    #---------------------------------------------------------------------------------
+    #Get St sacrament path as df
+    #Pipes in the path are in order from downstream to upstream
+    trunkDF = convertListPathtoDF(pathsAll[idTrunkIni],links)
+
+    #Gets the pipes connected to the path but not part of it 
+    pipesConnected = getPipesConnectedToTrunk(trunkDF, links)
+    
+    #Selects which branches to model as tank in series, as catchments or no model depending on their flow rate
+    branches,tsPipeCatchments,outNodesToBreak = selectBranches(outfile, pipesConnected)
+
+    #converts the path from st sacrement to the WTP into sewer sections
+    trunkModels = convertPathToSwrSectAndCatchts(trunkDF,nElements,tsPipeCatchments,outNodesToBreak,linkMeasurementFlow) 
+
+    #TODO modelar las ramas y retornar tambien una tupla con lista de modelos y lista de catchments
+    #branchesModels = convertBranchesToModels(branches)
+
+    return trunkModels#, branchesModels
+
 

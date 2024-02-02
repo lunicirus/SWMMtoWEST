@@ -26,6 +26,10 @@ AREATANK = 'AreaTank'
 DF_BASELINE = 'DirectFBaseline'
 
 
+CONNECTED_PIPE_SUFFIX = '_dischargingPipe'
+TRUNK_PIPE_SUFFIX = '_trunkPipe'
+
+PERC_LIM_TO_BRANCH = 0.1 # Percentage from the trunk flow for a connecting pipe to be considered as a branch
 
 # DIST_TO_LEAF = "DistanceToOriginLeaf"
 

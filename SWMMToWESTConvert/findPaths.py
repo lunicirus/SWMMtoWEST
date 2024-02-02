@@ -1,13 +1,12 @@
-
 import SWMMToWESTConvert.SWMM_InpConstants as SWWM_C
+import SWMMToWESTConvert.getNetworkFromSWMM as gnfs
 
 
 #Adds the linkOut to the path 
-def addLinkToPath(links,linkOut,pipesPath):
+def addLinkToPath(linkOut,pipesPath):
     
     linkOutName = linkOut.name
     
-    #links.at[linkOutName, SEL]= True
     pipesPath.append(linkOutName)
 
     #Get's the node after the selected link
@@ -39,14 +38,14 @@ def reRoute(nodesDecision,links,pipesPath):
     
     return linkOut, pipesPath, nodesDecision
 
-def lookForPath(WTP_Tank,nodeAux,links,pipesPath,nodesDecision):
+def lookForPath(WTP_Tank,nodeAux,links:'pd.DataFrame',pipesPath,nodesDecision):
     
     endPoint = False
     
     while (nodeAux != WTP_Tank) and (not endPoint):
         
         #Gets the links out of the node evaluated
-        linksOut = links[links[SWWM_C.IN_NODE] == nodeAux]
+        linksOut = links[links[SWWM_C.IN_NODE] == nodeAux].copy()
 
         if(linksOut.shape[0] > 1):
             nodesDecision.append(nodeAux) #Saves the last decision of this path
@@ -73,14 +72,24 @@ def lookForPath(WTP_Tank,nodeAux,links,pipesPath,nodesDecision):
 
 
 #Could be replaced by using this swmmio.utils.functions.find_network_trace()
-def getPathToWTP(WTP_Tank,linksDF,endPoints):
+def getPathToWTP(WTP_Tank:str,linksDF:'pd.DataFrame',leaves)-> dict:
+    """
+        Get all paths from leaves (end nodes or the network) to a specific node
+    Args:
+        WTP_Tank (str): id name of the WRRF
+        linksDF (pd.DataFrame): links of the network and their attributes
+        endPoints (_type_): _description_
+
+    Returns:
+        _type_: _description_
+    """    
 
     #linksDF[SEL] = False
 
     paths = {}
 
     # Repeat for each point
-    for iniNode in endPoints:
+    for iniNode in leaves:
 
         pathsAux = []
         decisionsN = []
@@ -105,7 +114,52 @@ def getPathToWTP(WTP_Tank,linksDF,endPoints):
 
         #Saves the list of pipes
         paths[iniNode] = pathsAux
-        
-    #linksDF.drop(columns=[SEL],inplace=True)
-    
+            
     return paths
+
+
+def findMainFlowPath(initialNode:str,inpPath:str)-> 'pd.DataFrame':
+    """
+        Selects pipe by pipe going upstream from the initial node, selecting the pipe with largest flow.
+        Assumes the pipes direction is correct (outnode is downstream and innode upstream)
+    Args:
+        initialNode (str): name of the initial node (i.e. WRRF)
+        inpPath (str): path of the inp of the network
+
+    Returns:
+        pd.DataFrame: links selected as part of the trunk with name as index and its characteristics and connecting nodes as attributes. 
+                      ordered downstream to upstream
+    """
+    nodeEval = initialNode
+    trunk = []
+    trunkDF = None
+
+    try:
+        
+        linksNetwork = gnfs.getsNetworksLinks(inpPath) #all links of the network with name as index and its characteristics and connecting nodes as attributes.
+
+        while nodeEval is not None:
+
+            previousPipes = linksNetwork[linksNetwork[SWWM_C.OUT_NODE]==nodeEval].copy() #gets all the pipes discharging to the evaluated node
+
+            if previousPipes.shape[0] != 0: 
+
+                dfTSprePipes = gnfs.getFlowTimeSeries(previousPipes.index.to_list(),inpPath) #gets the time series of all connected pipes to the node evaluated
+
+                pipeTrunk = dfTSprePipes.mean().idxmax() # Calculate the mean of each pipe and gets the pipe with the largest mean
+
+                trunk.append(pipeTrunk) #adds the selected pipe to the list of the trunk
+
+                nodeEval = previousPipes.loc[pipeTrunk,SWWM_C.IN_NODE] #Gets the  name of the inital node of the pipe selected
+
+            else:
+                nodeEval = None
+
+        trunkDF = linksNetwork.loc[trunk].copy() #gets the attributes of the pipes in the trunk and its ordered downstream to upstream
+
+    except Exception as e:
+
+        print("Error finding the main water path: ", e)
+
+
+    return trunkDF, trunk
