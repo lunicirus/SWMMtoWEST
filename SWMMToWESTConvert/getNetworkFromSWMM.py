@@ -127,18 +127,16 @@ def getsNetworksLinks(inpPath:str)-> pd.DataFrame:
     
     return links
 
-def getFlowTimeSeries(pipes:list[str],inpPath:str)-> pd.DataFrame:
+def getFlowTimeSeries(pipes:list[str], fileOut:str)-> pd.DataFrame:
     """
         Gets the flow time series of a list of pipes using their name as key.
     Args:
         pipes (list[str]): names of the pipes for which to obtain the flow results
-        inpPath (str): path of the inp of the network
+        fileOut (str): path of the .out of the network
 
     Returns:
         pd.DataFrame: time as index and columns are the names of the pipes 
     """    
-
-    fileOut = getSimulationResultsFile(inpPath)
     tsDF = None
 
     for p in pipes:
