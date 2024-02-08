@@ -78,7 +78,7 @@ def getPathToWTP(WTP_Tank:str,linksDF:'pd.DataFrame',leaves)-> dict:
     Args:
         WTP_Tank (str): id name of the WRRF
         linksDF (pd.DataFrame): links of the network and their attributes
-        endPoints (_type_): _description_
+        leaves (_type_): _description_ #TODO
 
     Returns:
         _type_: _description_
@@ -118,25 +118,24 @@ def getPathToWTP(WTP_Tank:str,linksDF:'pd.DataFrame',leaves)-> dict:
     return paths
 
 
-def findMainFlowPath(initialNode:str,inpPath:str)-> 'pd.DataFrame':
+def findMainFlowPath(endNode:str,outPath:str,linksNetwork:'pd.DataFrame')-> 'pd.DataFrame':
     """
-        Selects pipe by pipe going upstream from the initial node, selecting the pipe with largest flow.
+        Selects pipe by pipe going upstream from the end node, selecting the pipe with largest flow.
         Assumes the pipes direction is correct (outnode is downstream and innode upstream)
     Args:
-        initialNode (str): name of the initial node (i.e. WRRF)
-        inpPath (str): path of the inp of the network
+        endNode (str): name of the end node (i.e. WRRF). 
+        outPath (str): path of the .out of the network SWMM model.
+        linksNetwork (pd.DataFrame): all links of the network with name as index and its characteristics and connecting nodes as attributes.
 
     Returns:
         pd.DataFrame: links selected as part of the trunk with name as index and its characteristics and connecting nodes as attributes. 
                       ordered downstream to upstream
     """
-    nodeEval = initialNode
+    nodeEval = endNode
     trunk = []
     trunkDF = None
 
     try:
-        
-        linksNetwork = gnfs.getsNetworksLinks(inpPath) #all links of the network with name as index and its characteristics and connecting nodes as attributes.
 
         while nodeEval is not None:
 
@@ -144,7 +143,7 @@ def findMainFlowPath(initialNode:str,inpPath:str)-> 'pd.DataFrame':
 
             if previousPipes.shape[0] != 0: 
 
-                dfTSprePipes = gnfs.getFlowTimeSeries(previousPipes.index.to_list(),inpPath) #gets the time series of all connected pipes to the node evaluated
+                dfTSprePipes = gnfs.getFlowTimeSeries(previousPipes.index.to_list(),outPath) #gets the time series of all connected pipes to the node evaluated
 
                 pipeTrunk = dfTSprePipes.mean().idxmax() # Calculate the mean of each pipe and gets the pipe with the largest mean
 
@@ -162,4 +161,4 @@ def findMainFlowPath(initialNode:str,inpPath:str)-> 'pd.DataFrame':
         print("Error finding the main water path: ", e)
 
 
-    return trunkDF, trunk
+    return trunkDF
