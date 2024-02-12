@@ -159,7 +159,7 @@ def createInputWEST(name,input,tsInputs):
 
 #Each pipe section has the name as the initial and final node of the composing pipes 
 # it has the mean of the slopes of the composing pipes, the mean (and only) diameter of the group, and the total length 
-def getPathElementsDividingByDiam(dfs,elements, initialElements,timePatterns,tSConnectedPoints):
+def getPathElementsDividingByDiam(dfs,elements, initialElements,timePatterns,tSConnectedPoints)->tuple[list[dict],list[dict]]:
     
     pipesSection = []
     catchments= []
