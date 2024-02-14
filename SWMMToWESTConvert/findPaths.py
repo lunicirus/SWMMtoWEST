@@ -65,7 +65,7 @@ def lookForPath(WTP_Tank,nodeAux,links:'pd.DataFrame',pipesPath,nodesDecision):
                 else:
                     linkOut,pipesPath,nodesDecision = reRoute(nodesDecision,links, pipesPath)
 
-            nodeAux, pipesPath = addLinkToPath(links,linkOut,pipesPath)
+            nodeAux, pipesPath = addLinkToPath(linkOut,pipesPath)
          
             
     return pipesPath, nodesDecision, nodeAux
@@ -107,7 +107,7 @@ def getPathToWTP(WTP_Tank:str,linksDF:'pd.DataFrame',leaves)-> dict:
                 paths[iniNode] = pathsAux
                 break
 
-            nodeAux, pathsAux = addLinkToPath(linksDF,linkOut,pathsAux)
+            nodeAux, pathsAux = addLinkToPath(linkOut,pathsAux)
 
             #Looks for the path again
             pathsAux,decisionsN,endNode = lookForPath(WTP_Tank,nodeAux,linksDF,pathsAux,decisionsN)

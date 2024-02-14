@@ -15,7 +15,7 @@ def getsNetwork(networkFile:str)-> tuple[dict,str]:
     Args:
         networkFile (str): path of the .inp of the network
     Returns:
-        tuple[dict,str]: dictionary with links, leaves, catchments, DWFs, timepatterns, directflows and timeseries of the network. 
+        tuple[dict,str]: Dictionary with links, leaves, catchments, DWFs, timepatterns, directflows and timeseries of the network. 
         Path to the .out of the network.
     """    
     model = swmmio.Model(networkFile) # Instantiate a swmmio model object
@@ -73,7 +73,7 @@ def getWaterDirectFlows(model:swmmio.Model)->tuple[pd.DataFrame,pd.DataFrame]:
     directWaterFlows = directFlows[(directFlows[SWWM_C.DFLOW_CONSTITUENT]==SWWM_C.FLOW)&(directFlows[SWWM_C.TYPE]==SWWM_C.FLOW)].drop(
                                     columns=[SWWM_C.DFLOW_CONSTITUENT,SWWM_C.TYPE,SWWM_C.DFLOW_MFACTOR])
     
-    print("There were ", directFlows.shape[0] - directWaterFlows.shape[0], "DFs with other constituents than FLOW")
+    print("There were", directFlows.shape[0] - directWaterFlows.shape[0], "DFs with other constituents than FLOW")
 
     timeSeriesNames = directWaterFlows[SWWM_C.DFLOW_TIMES].dropna().unique().tolist()
     timeSeries = model.inp.timeseries.loc[timeSeriesNames]
@@ -91,7 +91,7 @@ def getFlowDWFs(model:swmmio.Model)->pd.DataFrame:
     dwfs = model.inp.dwf[[SWWM_C.INFLOW_TYPE,SWWM_C.INFLOW_MEAN,SWWM_C.INFLOW_PATTERNS]].copy()    
     dwfsWater = dwfs[dwfs[SWWM_C.INFLOW_TYPE]==SWWM_C.FLOW].drop(columns=[SWWM_C.INFLOW_TYPE]).copy()
 
-    print("There were ", dwfs.shape[0] - dwfsWater.shape[0], "DWFs with inflow type different than FLOW")
+    print("There were", dwfs.shape[0] - dwfsWater.shape[0], "DWFs with inflow type different than FLOW")
     return dwfsWater
 
 def getCatchments(model:swmmio.Model)->pd.DataFrame:
@@ -105,7 +105,7 @@ def getCatchments(model:swmmio.Model)->pd.DataFrame:
     catchments = model.subcatchments()[[SWWM_C.CATCH_OUT,SWWM_C.AREA]]
     validCatchments = catchments[catchments[SWWM_C.AREA]>0]
 
-    print("There were ", catchments.shape[0] - validCatchments.shape[0], "subcatchments with area 0")
+    print("There were", catchments.shape[0] - validCatchments.shape[0], "subcatchments with area 0")
     return validCatchments
 
 def getSimulationResultsFile(networkFile:str)-> str:

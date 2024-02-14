@@ -14,187 +14,6 @@ import SWMMToWESTConvert.convertSWMMToWEST as cw
 import SWMMToWESTConvert.findPaths as fp
 import SWMMToWESTConvert.getNetworkFromSWMM as gnpd
 
-
-#types of aggregation
-AGG_CATCHMENT = 'AggregateAtNearestCatchment'
-
-
-def convertListPathtoDF(path:list[str], linksNetwork:pd.DataFrame)->pd.DataFrame:
-    """
-        Converts a path in list form into a dataframe with the pipes' characteristics maintaining the same order.
-    Args:
-        path (list[str]): list of names of the pipes in the path
-        linksNetwork (pd.DataFrame): links of the entire network. Index is the link name and columns are their attributes.
-    Returns:
-        pd.DataFrame: records are the pipes of the path in order, index is the name and columns are the attributes.
-    """         
-    return linksNetwork.loc[path].copy()
-
-
-def createLookPointsDF(nElements:dict,nodesToBreak:pd.DataFrame,linkMeasurement:list[str],timeSeriesPointsCon:pd.DataFrame)->tuple[pd.DataFrame,pd.DataFrame]:
-    """
-        Merges all elements to be converted into WEST catchments in a dataframe (measured nodes, catchments, dwfs, direct flows, and incoming pipes). It aggregates catchments that discharge on the same node.
-        It also merges elements that are going to be used to break the path.
-    Args:
-        nElements (dict): Dictionary with links, leaves, catchments, DWFs, timepatterns, directflows and timeseries of the network.
-        nodesToBreak (pd.DataFrame): Break points to cut the path 
-        linkMeasurement (list[str]): List of pipe names where measurements are taken in the field.
-        timeSeriesPointsCon (pd.DataFrame): Timeseries of the pipes discharging into the path and selected as catchments.
-    Returns:
-        tuple[pd.DataFrame,pd.DataFrame]: lookPoints of the network to be converted to WEST catchments. breakPoints to cut the path.
-    """    
-    links = nElements[STW_C.LINKS]
-    
-    stopNodes = links[links.index.isin(linkMeasurement)][[SWWM_C.OUT_NODE]].copy() #Get nodes out of the links with flow measures
-    
-    #change this to include the timeseires points
-    createdInputs = nodesToBreak.reset_index().rename(columns={SWWM_C.NAME:STW_C.MODELED_INPUT})#gets created inputs (pipes that connect to the path with flow)
-
-    #gets output nodes of catchments, and aggregates by node. renames so that all stop nodes and cathcment nodes can be merged
-    catchmNodes = nElements[STW_C.SUBCATCHMENTS].groupby([SWWM_C.CATCH_OUT]).agg({SWWM_C.AREA: 'sum'}).reset_index().rename(
-                                                    columns={'index':SWWM_C.OUT_NODE, SWWM_C.CATCH_OUT:SWWM_C.OUT_NODE})
-
-    #selects the nodes where there is direct input, renames so that all stop nodes and cathcment nodes can be merged
-    inputFlowNodes = nElements[STW_C.DWFS].reset_index().rename(columns={SWWM_C.INFLOW_NODE:SWWM_C.OUT_NODE})
-    directFlowNodes = nElements[STW_C.DIRECTF].reset_index().rename(columns={SWWM_C.INFLOW_NODE:SWWM_C.OUT_NODE})
-    
-    print("Number of measurement points", len(stopNodes))
-    print("Number of catchments nodes ",len(catchmNodes))
-    print("Number of dw flows ", len(inputFlowNodes))
-    print("Number of direct flows ",len(directFlowNodes))
-        
-    stopAndInput = pd.merge(stopNodes, createdInputs, on=SWWM_C.OUT_NODE, how='outer') #Joins meassurement and catchment points
-    stopAndCatchmentAndInput = pd.merge(stopAndInput, catchmNodes, on=SWWM_C.OUT_NODE, how='outer') #Joins meassurement and catchment points
-    stopAndCatchmentDwf = pd.merge(stopAndCatchmentAndInput, inputFlowNodes, on=SWWM_C.OUT_NODE, how='outer') #Joins dry weather flows inputs points
-    lookPoints = pd.merge(stopAndCatchmentDwf, directFlowNodes, on=SWWM_C.OUT_NODE, how='outer') #Joins direct inputs points
-  
-    #stopAndCatchment = pd.merge(stopNodes, catchmNodes, on=OUT_NODE, how='outer')
-    #stopAndCatchmentAndInput = pd.merge(stopAndCatchment, createdInputs, on=OUT_NODE, how='outer')
-    #breakLinks = stopAndCatchmentAndInput
-    breakLinks = stopAndInput
-
-    print("Number of look points", len(lookPoints))
-    print("Number of break points ",len(breakLinks))
-   
-    return lookPoints, breakLinks
-
-def dividesPathByBreakPoints(linksPath,breakLinks):
-    
-    #Gets th index of the break points on the path and divides the pipe
-    breakLinks = pd.merge(linksPath, breakLinks.set_index(SWWM_C.OUT_NODE), 
-                              left_on=SWWM_C.OUT_NODE, right_index=True, how='inner',indicator=True).copy()
-    indexBreakLinks = breakLinks.index + 1
-    
-    #separates the path in smaller parts according to the meassurable points
-    dfs = np.split(linksPath, indexBreakLinks)    
-    print("Number of divisions by meassurement or input nodes" , len(dfs))
-    
-    return dfs, indexBreakLinks
-
-#checks if the initial node of the path is a outlet node of a catchment and if it is, it returns its area
-def checkForInitialElements(dfPath,lookupLinks):
-    
-    initialNode = dfPath.iloc[0][SWWM_C.IN_NODE]
-    lookupLinks.set_index(SWWM_C.OUT_NODE,inplace=True)
-    initialElement = None
-    
-    if initialNode in lookupLinks.index:
-        
-        assert lookupLinks.loc[[initialNode]].shape[0] <=  1 ,f"There is more than one element with equal node out in the df"
-        
-        initialElement = {}
-        initialElement[SWWM_C.OUT_NODE] = initialNode
-        initialElement[SWWM_C.AREA] = lookupLinks.loc[initialNode,SWWM_C.AREA]
-        initialElement[SWWM_C.INFLOW_MEAN] = lookupLinks.loc[initialNode,SWWM_C.INFLOW_MEAN]
-        initialElement[SWWM_C.INFLOW_PATTERNS] = lookupLinks.loc[initialNode,SWWM_C.INFLOW_PATTERNS]
-        initialElement[SWWM_C.DFLOW_BASELINE] = lookupLinks.loc[initialNode,SWWM_C.DFLOW_BASELINE]
-        initialElement[STW_C.MODELED_INPUT] = lookupLinks.loc[initialNode,STW_C.MODELED_INPUT]
-            
-    return initialElement
-
-def checkUniqueDWFPatterns(lookPointsPath:pd.DataFrame):
-
-    groupedPatterns = lookPointsPath.groupby(STW_C.BREAK_POINT)[SWWM_C.INFLOW_PATTERNS].transform('nunique')
-    assert len(lookPointsPath[STW_C.BREAK_POINT][groupedPatterns > 1].unique()) == 0,f"Sewer sections with different DWF patterns are trying to be grouped."  
-    assert lookPointsPath[SWWM_C.NAME].nunique() == lookPointsPath.shape[0],f"There are duplicate names"
-
-# Joins the linkpath df to the lookpoints and slices the result df by element
-# checks for elements at the initial point of the path 
-# stores all the results in the proElements dictionary
-def extractPathLookPoints(linksPath:pd.DataFrame,lookPoints,breaklinksIndexPath)->tuple[pd.DataFrame,dict]:
-    
-    #selects the pipes IN THE PATH that are connected to look points
-    lookPointsPath = linksPath.join(lookPoints.set_index(SWWM_C.OUT_NODE), on=SWWM_C.OUT_NODE).copy()
-    
-    #Finds the closest breaking point of each element --------------------------------------------------------------------------
-    markerIndicesUnmodified = (breaklinksIndexPath - 1).tolist() #because previously one was added
-    
-    lookPointsPath[STW_C.BREAK_POINT] = lookPointsPath.index.to_series().apply(lambda idx: min((n for n in markerIndicesUnmodified if n >= idx), default=None))
-       
-    # Check if there are no grouped sections with different dwf patterns --------------------------------------------------------
-    checkUniqueDWFPatterns(lookPointsPath)
-
-    # Groups by the sections elements to the nearest break point --------------------------------------------------------------------
-    pathElements = lookPointsPath.groupby([STW_C.BREAK_POINT]).agg({SWWM_C.NAME: 'last',SWWM_C.AREA:'sum', 
-                                                                            SWWM_C.INFLOW_MEAN: 'sum', SWWM_C.INFLOW_PATTERNS: 'first',
-                                                                            SWWM_C.DFLOW_BASELINE: 'sum', 
-                                                                            STW_C.MODELED_INPUT:'first'}).set_index([SWWM_C.NAME]) 
-    
-    #lookPointsPath.to_csv('02-Output/'+'elementsImportantPath'+'.csv')
-    
-    #Checks for elements at the initial node of the path
-    initialPathElements = checkForInitialElements(linksPath,lookPoints)
-    
-    return pathElements,initialPathElements
-    
-#DEPRECATED
-def lookForOtherPipesConnected(linksPath,allLinks,fileOut):
-    #find the pipes connected to the path giving it flow
-
-    #Gets the links that are not in the path
-    linksPathOutNodes = linksPath.set_index(SWWM_C.NAME)[SWWM_C.OUT_NODE]
-    pipesNotPath = allLinks[~allLinks.index.isin(linksPathOutNodes.index)].copy()
-    assert allLinks.shape[0] == pipesNotPath.shape[0] + linksPath.shape[0]
-
-    #pipesNotPath.to_csv('pipesNotInPath.csv')
-    
-    #Gets links in the network connected to the path (but not part of it)
-    pipesConnected = pipesNotPath[pipesNotPath[SWWM_C.OUT_NODE].isin(linksPathOutNodes)][[SWWM_C.OUT_NODE]].copy()
-    pipesConnectedNames = pipesConnected.index.to_list()
-    print("There are", len(pipesConnectedNames), "connections to the path")
-
-    #pipesConnected.to_csv('pipesConnected.csv')
-
-    #Check that there are no more than one pipe per outnode!! TODO
-    #-------TODO-------TODO-------TODO--------TODO-----TODO-----TODO
-
-    #Gets the timeseries of the flow from the connections to the path
-    tsDFNoZeros = None    
-    if len(pipesConnectedNames) > 0:
-        tsDF = None
-
-        with Output(fileOut) as out:
-            for pipe in pipesConnectedNames:
-                
-                ts = out.link_series(pipe, LinkAttribute.FLOW_RATE)
-                
-                if tsDF is None:
-                    tsDF = pd.DataFrame.from_dict(ts, orient='index',columns=[pipe])
-                else:
-                    tsDF = tsDF.join(pd.DataFrame.from_dict(ts, orient='index',columns=[pipe]))
-
-        #tsDF.to_csv('cleaned.csv', index=True)
-    
-        # remove columns with only zeros
-        tsDFNoZeros = tsDF.loc[:, (tsDF != 0).any(axis=0)]
-        print(tsDF.shape[1] - tsDFNoZeros.shape[1],"connections to the path were removed due to no flow at anytime.") 
-
-    #Removes from the list the pipes with only zero flow
-    outNodesNoZeros = pipesConnected[pipesConnected.index.isin(tsDFNoZeros.columns.to_list())]
-    
-    return tsDFNoZeros, outNodesNoZeros
-
-
 def findTrunk(idWRRF:str, outfile:str, links:pd.DataFrame, idTrunkIni:str=None)->pd.DataFrame:
     """
         Finds the trunk of the network. If the start point of the trunk is known then finds the path between that point and the WRRF.
@@ -225,7 +44,7 @@ def getPipesConnectedToPath(linksMainPath:pd.DataFrame, allLinks:pd.DataFrame) -
         pd.DataFrame: pipes connected to the trunk associated with the pipe just before their connection and the outnode.
                     The column is named "SWWM_C.NAME + STW_C.TRUNK_PIPE_SUFFIX".
     """    
-    linksPathOutNodes = linksMainPath.set_index(SWWM_C.NAME)[[SWWM_C.OUT_NODE]] 
+    linksPathOutNodes = linksMainPath[[SWWM_C.OUT_NODE]] 
     pipesNotPath = allLinks[~allLinks.index.isin(linksPathOutNodes.index)].copy() #Gets the links that are not in the path
     assert allLinks.shape[0] == pipesNotPath.shape[0] + linksMainPath.shape[0]
 
@@ -261,11 +80,11 @@ def evaluateBranchInfluence(fileOut:str, branchPipe:str, trunkPipeBeforeBranch:s
     #the flow from the connections to the path and the pipe before the discharge
     dfTS = gnpd.getFlowTimeSeries([branchPipe,trunkPipeBeforeBranch],fileOut) #Gets the timeseries of both pipes (branchPipe, trunkPipeBeforeBranch)
 
-    maxVals = dfTS.mean() #gets the maximum of both flow timeseries
-    maxDischarging = maxVals[branchPipe]
-    limitFlowrate = maxVals[trunkPipeBeforeBranch] * STW_C.PERC_LIM_TO_BRANCH
+    meanVals = dfTS.mean() #gets the mean of both flow timeseries
+    meanDischarging = meanVals[branchPipe]
+    limitFlowrate = meanVals[trunkPipeBeforeBranch] * STW_C.PERC_LIM_TO_BRANCH
 
-    relevant = maxDischarging > limitFlowrate
+    relevant = meanDischarging > limitFlowrate
     tsBranch =  dfTS.drop(columns=[trunkPipeBeforeBranch])
 
     return relevant, tsBranch
@@ -345,7 +164,7 @@ def selectBranchesAndBreakPoints(fileOut:str, mainPath:pd.DataFrame,links:pd.Dat
     Returns:
         tuple[list[str],pd.DataFrame|None,pd.DataFrame]: Connected pipes names selected as branches. 
                                                          Timeseries of the pipes selected as catchments.
-                                                         All pipes (and their outnodes) that are modelled either as branches or catchments
+                                                         All pipes (name as index and outnodes as column) that are modelled either as branches or catchments
     """    
     pipesConnected = getPipesConnectedToPath(mainPath, links) #Gets the pipes connected to the path
 
@@ -355,6 +174,128 @@ def selectBranchesAndBreakPoints(fileOut:str, mainPath:pd.DataFrame,links:pd.Dat
 
     return relevantBranches,tsDFCatchments,outNodesToBreak
 
+def convertListPathtoDF(path:list[str], linksNetwork:pd.DataFrame)->pd.DataFrame:
+    """
+        Converts a path in list form into a dataframe with the pipes' characteristics maintaining the same order.
+    Args:
+        path (list[str]): list of names of the pipes in the path
+        linksNetwork (pd.DataFrame): links of the entire network. Index is the link name and columns are their attributes.
+    Returns:
+        pd.DataFrame: records are the pipes of the path in order, index is the name and columns are the attributes.
+    """         
+    return linksNetwork.loc[path].copy()
+
+def createLookPointsDF(nElements:dict,timeSeriesPointsCon:pd.DataFrame)->pd.DataFrame:
+    """
+        Merges all the network flow elements (measured nodes, catchments, dwfs, direct flows, and incoming pipes) in a dataframe. 
+        It aggregates catchments that discharge on the same node.
+    Args:
+        nElements (dict): Dictionary with links, leaves, catchments, DWFs, timepatterns, directflows and timeseries of the network.
+        timeSeriesPointsCon (pd.DataFrame): Timeseries of the pipes discharging into the path and selected as catchments.
+    Returns:
+        pd.DataFrame: lookPoints of the network to be converted to WEST catchments. 
+    """    
+    links = nElements[STW_C.LINKS]
+    
+    TSFlowsNodes = links[links.index.isin(timeSeriesPointsCon.columns.to_list())][[SWWM_C.OUT_NODE]].copy()#gets the pipes connected and dischargint into the path
+    TSFlowsNodes[STW_C.MODELED_INPUT]= True 
+    catchmNodes = nElements[STW_C.SUBCATCHMENTS].groupby([SWWM_C.CATCH_OUT]).agg({SWWM_C.AREA: 'sum'}).reset_index().rename( 
+                                                    columns={'index':SWWM_C.OUT_NODE, SWWM_C.CATCH_OUT:SWWM_C.OUT_NODE}) #aggregates by node, and renames to be able to merge
+    DWFsNodes = nElements[STW_C.DWFS].reset_index().rename(columns={SWWM_C.INFLOW_NODE:SWWM_C.OUT_NODE}) # renames to merge later
+    dFlowNodes = nElements[STW_C.DIRECTF].reset_index().rename(columns={SWWM_C.INFLOW_NODE:SWWM_C.OUT_NODE}) # renames to merge later
+    
+    #Merges: adds the columns of the second table, and add not existent rows. 
+    tsFlowAndCatchment = pd.merge(TSFlowsNodes, catchmNodes, on=SWWM_C.OUT_NODE, how='outer') #Merges of meassurement and catchment points
+    stopAndCatchmentDwf = pd.merge(tsFlowAndCatchment, DWFsNodes, on=SWWM_C.OUT_NODE, how='outer') #Merges dry weather flows inputs points
+    lookPoints = pd.merge(stopAndCatchmentDwf, dFlowNodes, on=SWWM_C.OUT_NODE, how='outer') #Merges direct inputs points
+   
+    return lookPoints
+
+def dividesPathByBreakPoints(linksPath:pd.DataFrame,nodeBreak:pd.DataFrame,linkMeasurement:list[str])-> tuple[list[pd.DataFrame],pd.Index]:
+    """
+        Joins the nodes to break with link measurements and cuts the path using these points.
+    Args:
+        linksPath (pd.DataFrame): Links in the main path
+        nodeBreak (pd.DataFrame): Break points to cut the path 
+        linkMeasurement (list[str]): pipe names where measurements are taken in the field.
+    Returns:
+        tuple[list[pd.DataFrame],pd.Index]: Set of pipe sections cutted using the cut points. Index of the cut points in the complete path 
+    """   
+
+
+    measuringNodes = linksPath[linksPath[SWWM_C.OUT_NODE].isin(linkMeasurement)][[SWWM_C.OUT_NODE]].copy() #Get nodes out of the links with flow measures
+    print("Number of measurement points", len(measuringNodes))
+
+    breakLinksAndMeasure= pd.merge(nodeBreak, measuringNodes, on=SWWM_C.OUT_NODE, how='outer') #joins break links and measurement points
+        
+    linksPath=linksPath.reset_index()
+    
+    cutLinks = pd.merge(linksPath, breakLinksAndMeasure.set_index(SWWM_C.OUT_NODE), 
+                              left_on=SWWM_C.OUT_NODE, right_index=True, how='inner',indicator=True).copy() #Gets th index of the break points on the path 
+    
+    indexCutLinks = cutLinks.index + 1
+        
+    dfs = np.split(linksPath, indexCutLinks)  #separates the path in smaller parts according to cut points
+    print("Number of divisions by meassurement or input nodes" , len(dfs))
+    
+    return dfs, indexCutLinks
+
+#checks if the initial node of the path is a outlet node of a catchment and if it is, it returns its area
+def checkForInitialElements(dfPath,lookupLinks):
+    
+    initialNode = dfPath.iloc[0][SWWM_C.IN_NODE]
+    lookupLinks.set_index(SWWM_C.OUT_NODE,inplace=True)
+    initialElement = None
+    
+    if initialNode in lookupLinks.index:
+        
+        assert lookupLinks.loc[[initialNode]].shape[0] <=  1 ,f"There is more than one element with equal node out in the df"
+        
+        initialElement = {}
+        initialElement[SWWM_C.OUT_NODE] = initialNode
+        initialElement[SWWM_C.AREA] = lookupLinks.loc[initialNode,SWWM_C.AREA]
+        initialElement[SWWM_C.INFLOW_MEAN] = lookupLinks.loc[initialNode,SWWM_C.INFLOW_MEAN]
+        initialElement[SWWM_C.INFLOW_PATTERNS] = lookupLinks.loc[initialNode,SWWM_C.INFLOW_PATTERNS]
+        initialElement[SWWM_C.DFLOW_BASELINE] = lookupLinks.loc[initialNode,SWWM_C.DFLOW_BASELINE]
+        initialElement[STW_C.MODELED_INPUT] = lookupLinks.loc[initialNode,STW_C.MODELED_INPUT]
+            
+    return initialElement
+
+def checkUniqueDWFPatterns(lookPointsPath:pd.DataFrame):
+
+    groupedPatterns = lookPointsPath.groupby(STW_C.BREAK_POINT)[SWWM_C.INFLOW_PATTERNS].transform('nunique')
+    assert len(lookPointsPath[STW_C.BREAK_POINT][groupedPatterns > 1].unique()) == 0,f"Sewer sections with different DWF patterns are trying to be grouped."  
+    assert lookPointsPath[SWWM_C.NAME].nunique() == lookPointsPath.shape[0],f"There are duplicate names"
+
+# Joins the linkpath df to the lookpoints and slices the result df by element
+# checks for elements at the initial point of the path 
+# stores all the results in the proElements dictionary
+def extractPathLookPoints(linksPath:pd.DataFrame,lookPoints:pd.DataFrame,breaklinksIndexPath:pd.Index)->tuple[pd.DataFrame,dict]:
+
+    #selects the pipes IN THE PATH that are connected to look points
+    lookPointsPath = linksPath.join(lookPoints.set_index(SWWM_C.OUT_NODE), on=SWWM_C.OUT_NODE).copy()
+    
+    #Finds the closest breaking point of each element --------------------------------------------------------------------------
+    markerIndicesUnmodified = (breaklinksIndexPath - 1).tolist() #because previously one was added
+    
+    lookPointsPath[STW_C.BREAK_POINT] = lookPointsPath.index.to_series().apply(lambda idx: min((n for n in markerIndicesUnmodified if n >= idx), default=None))
+       
+    # Check if there are no grouped sections with different dwf patterns --------------------------------------------------------
+    checkUniqueDWFPatterns(lookPointsPath)
+
+    # Groups by the sections elements to the nearest break point --------------------------------------------------------------------
+    pathElements = lookPointsPath.groupby([STW_C.BREAK_POINT]).agg({SWWM_C.NAME: 'last',SWWM_C.AREA:'sum', 
+                                                                            SWWM_C.INFLOW_MEAN: 'sum', SWWM_C.INFLOW_PATTERNS: 'first',
+                                                                            SWWM_C.DFLOW_BASELINE: 'sum', 
+                                                                            STW_C.MODELED_INPUT:'first'}).set_index([SWWM_C.NAME]) 
+    
+    #lookPointsPath.to_csv('02-Output/'+'elementsImportantPath'+'.csv')
+    
+    #Checks for elements at the initial node of the path
+    initialPathElements = checkForInitialElements(linksPath,lookPoints)
+    
+    return pathElements,initialPathElements
+    
 def convertPathToSwrSectAndCatchts(linksPath:pd.DataFrame, networkElements:dict,timeSeriesPointsCon:pd.DataFrame, 
                                    nodesTobreakPath:pd.DataFrame,linkMeasurement:list[str]=[])->tuple[list[dict],list[dict]]: 
     """_summary_ #TODO!!
@@ -363,22 +304,17 @@ def convertPathToSwrSectAndCatchts(linksPath:pd.DataFrame, networkElements:dict,
         linksPath (pd.DataFrame): Links in the main path
         networkElements (dict): Dictionary with links, leaves, catchments, DWFs, timepatterns, directflows and timeseries of the network.
         timeSeriesPointsCon (pd.DataFrame): Time series of the pipes to be modelled as catchments, with name as columns and index the datetime.
-        nodesTobreakPath (pd.DataFrame): Break points to cut the path 
+        nodesTobreakPath (pd.DataFrame): Break points to cut the path. Pipe name as index and nodeout as column.
         linkMeasurement (list[str], optional): List of pipe names where measurements are taken in the field. Defaults to an empty list.
     Returns:
         tuple[list[dict],list[dict]]: a dictionary per tank model of the converted path (to tank in series) with its characteristiscs.
                                       a dictionary per catchment model representing one or more inflows from (DWF, DF, cathment, or discharging pipe)
     """    
     #linksPath.to_csv('02-Output/'+'elementspath'+'.csv')
+   
+    pathDfs, indexbreakLinks = dividesPathByBreakPoints(linksPath,nodesTobreakPath,linkMeasurement,networkElements[STW_C.LINKS])#Divides the path in various sections using dfs
 
-    #Joins all important points into a df
-    lookPoints, breaklinks = createLookPointsDF(networkElements,nodesTobreakPath,linkMeasurement,timeSeriesPointsCon)
-    
-    #Divides the path in various sections using dfs
-    pathDfs, indexbreakLinks = dividesPathByBreakPoints(linksPath,breaklinks)
-
-    #converts the important points into links with the characteristics required
-    pathElements, initialPathElements = extractPathLookPoints(linksPath,lookPoints,indexbreakLinks)
+    pathElements, initialPathElements = extractPathLookPoints(linksPath,lookPoints,indexbreakLinks) #converts the important points into links with the characteristics required
    
     #separates the path by diameter and converts the group of pipes into sewer sections, catchments, and dwf
     pipeSectionsProperties, catchmentsProperties = cw.getPathElementsDividingByDiam(pathDfs,pathElements,initialPathElements,
@@ -452,6 +388,8 @@ def aggregateAndModelNetwork(networkInp:str, idWRRF:str, linkMeasurementFlow:lis
                                             A dictonary with a dictionary for each branch. Each branch dictionary has a list of tank series models and a list of catchments models.
     """    
     networkElements, outfile = gnpd.getsNetwork(networkInp) #Gets all the necesary elements from the network 
+
+    lookPoints = createLookPointsDF(networkElements,timeSeriesPointsCon) #Joins all important points of the whole network into a df
     
     branches, trunkModels = getTrunkModels(idWRRF, linkMeasurementFlow, networkElements, outfile, idTrunkIni)  
     branchesModels = getBranchesModels(networkElements, outfile, branches)
@@ -463,6 +401,53 @@ def aggregateAndModelNetwork(networkInp:str, idWRRF:str, linkMeasurementFlow:lis
 
 #-----------------------------------------------------------------------------------------------------------------------------------
 #DEPRECATED----------------------------------------------------------
+
+def lookForOtherPipesConnected(linksPath,allLinks,fileOut):
+    #find the pipes connected to the path giving it flow
+
+    #Gets the links that are not in the path
+    linksPathOutNodes = linksPath.set_index(SWWM_C.NAME)[SWWM_C.OUT_NODE]
+    pipesNotPath = allLinks[~allLinks.index.isin(linksPathOutNodes.index)].copy()
+    assert allLinks.shape[0] == pipesNotPath.shape[0] + linksPath.shape[0]
+
+    #pipesNotPath.to_csv('pipesNotInPath.csv')
+    
+    #Gets links in the network connected to the path (but not part of it)
+    pipesConnected = pipesNotPath[pipesNotPath[SWWM_C.OUT_NODE].isin(linksPathOutNodes)][[SWWM_C.OUT_NODE]].copy()
+    pipesConnectedNames = pipesConnected.index.to_list()
+    print("There are", len(pipesConnectedNames), "connections to the path")
+
+    #pipesConnected.to_csv('pipesConnected.csv')
+
+    #Check that there are no more than one pipe per outnode!! TODO
+    #-------TODO-------TODO-------TODO--------TODO-----TODO-----TODO
+
+    #Gets the timeseries of the flow from the connections to the path
+    tsDFNoZeros = None    
+    if len(pipesConnectedNames) > 0:
+        tsDF = None
+
+        with Output(fileOut) as out:
+            for pipe in pipesConnectedNames:
+                
+                ts = out.link_series(pipe, LinkAttribute.FLOW_RATE)
+                
+                if tsDF is None:
+                    tsDF = pd.DataFrame.from_dict(ts, orient='index',columns=[pipe])
+                else:
+                    tsDF = tsDF.join(pd.DataFrame.from_dict(ts, orient='index',columns=[pipe]))
+
+        #tsDF.to_csv('cleaned.csv', index=True)
+    
+        # remove columns with only zeros
+        tsDFNoZeros = tsDF.loc[:, (tsDF != 0).any(axis=0)]
+        print(tsDF.shape[1] - tsDFNoZeros.shape[1],"connections to the path were removed due to no flow at anytime.") 
+
+    #Removes from the list the pipes with only zero flow
+    outNodesNoZeros = pipesConnected[pipesConnected.index.isin(tsDFNoZeros.columns.to_list())]
+    
+    return tsDFNoZeros, outNodesNoZeros
+
 def aggregateTrunk(networkInp:str, idWTP:str, idTrunkIni:str, linkMeasurementFlow:list[str]) -> tuple[list[dict],list[dict]]:
     
     """It obtains the elements of the network and converts it into a trunk with elements (catchments, DWFs, DFs) attached. 
