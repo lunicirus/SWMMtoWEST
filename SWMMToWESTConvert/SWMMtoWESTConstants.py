@@ -26,6 +26,8 @@ DF_BASELINE = 'DirectFBaseline'
 
 CONNECTED_PIPE_SUFFIX = '_dischargingPipe'
 TRUNK_PIPE_SUFFIX = '_trunkPipe'
+TRUNK_PIPE_NAME = 'Name_trunkPipe'
+DISCHARGE_PIPE_NAME = 'Name_dischargingPipe'
 
 BREAK_POINT = "BreakPoint"
 PATH = 'PathTankInSeries'

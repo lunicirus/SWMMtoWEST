@@ -164,13 +164,13 @@ def getLinksWithSlope(model:swmmio.Model)->pd.DataFrame:
 
     return links
 
-def getHourlyPatterns(networkFile:str)-> dict:
+def getHourlyPatterns(networkFile:str)-> dict[list]:
     """
         Returns the hourly patters of the network. Only works if there are no patterns different from hourly in the inp.
     Args:
         networkFile (str): path of the .inp of the network
     Returns:
-        dict: with the name of the pattern as key and the values as a list
+        dict[list]: with the name of the pattern as key and the values as a list
     """    
     patternsRaw = swmmio.utils.dataframes.dataframe_from_inp(networkFile,'PATTERNS') #Gets the section from the inp
     

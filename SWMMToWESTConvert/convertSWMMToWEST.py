@@ -253,7 +253,7 @@ def getPathElements(dfs,elements, initialElements,timePatterns,tSConnectedPoints
         tankIndex += n
                 
         #Creates and adds a catchment and/or and dwf to their list if they are connected at the beggining of the path
-        if firstSection and (initialElements is not None):
+        if firstSection and (initialElements is not {}):
             catchment = createCatchmentWEST(name, initialElements,timePatterns,False)
             catchments.append(catchment)
             
@@ -268,7 +268,7 @@ def getPathElements(dfs,elements, initialElements,timePatterns,tSConnectedPoints
 
             #If the ts is not empty it creates an input object
             if tsInput is not None:
-                input = createInputWEST(name, tsInput,tSConnectedPoints)
+                input = createInputWEST(name, tsInput, tSConnectedPoints)
                 catchments.append(input)
 
             element.drop(labels=STW_C.MODELED_INPUT,inplace=True)
