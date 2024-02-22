@@ -183,6 +183,8 @@ def createLookPointsDF(nElements:dict)->pd.DataFrame:
     stopAndCatchmentDwf = pd.merge(catchmNodes, DWFsNodes, on=SWWM_C.OUT_NODE, how='outer') #Merges cathcments with dwfs points
     lookPoints = pd.merge(stopAndCatchmentDwf, dFlowNodes, on=SWWM_C.OUT_NODE, how='outer') #Merges direct inputs points
    
+    lookPoints.set_index(SWWM_C.OUT_NODE,inplace=True)
+
     return lookPoints
 
 def getBreakPoints(pathDF: pd.DataFrame, relevantBranches:pd.DataFrame, nodesMeasurement:list[str])->pd.DataFrame:
@@ -206,30 +208,31 @@ def dividesPathByBreakPoints(linksPath:pd.DataFrame,linksToBreak:pd.DataFrame)->
     """
         Splits the path using the links to break.
     Args:
-        linksPath (pd.DataFrame): Links in the main path
+        linksPath (pd.DataFrame): Links in the path
         linksToBreak (pd.DataFrame): Pipes where the path should be cutted. 
     Returns:
         tuple[list[pd.DataFrame],pd.Index]: Set of pipe sections cutted using the cut points. Index of the cut points in the complete path 
     """   
-    indexCutLinks = linksToBreak.index + 1 #needed for the split
-    dfs = np.split(linksPath, indexCutLinks)  #separates the path in smaller parts according to cut points
+    indexCut= linksToBreak.index
+    indexCutLinks = list(indexCut + 1)
+
+    dfs = [linksPath.iloc[i:j] for i, j in zip([0] + indexCutLinks, indexCutLinks + [len(linksPath)])]
     print("Number of resulting sections of the path" , len(dfs))
 
-    indexCutLinks = indexCutLinks - 1 
-    cutlinks = indexCutLinks.to_list()
-
-    return dfs, cutlinks
+    return dfs, indexCut
 
 def getPathLookPoints(pathDF:pd.DataFrame, networkLookNodes:pd.DataFrame, pipesCatchments:pd.DataFrame)->pd.DataFrame:
-    """TODO do this
+    """
+        Filters the network flow elements to obtain the flow elements on the path, and adds the pipes to be modelled as catchments
+        to the look points.
     Args:
-        pathDF (pd.DataFrame): _description_
-        networkLookNodes (pd.DataFrame): _description_
-        pipesCatchments (pd.DataFrame): _description_
+        pathDF (pd.DataFrame): Links in the main path with their characteristics, index is the order from upstream to downstream.
+        networkLookNodes (pd.DataFrame): Nodes with flow elements and their characteristics (i.e., Area,...,Baseline). Index is OutletNode.
+        pipesCatchments (pd.DataFrame): Links to be modelled as catchments. Index is discharging pipe, columns are ouletNode and trunk pipe.
     Returns:
-        pd.DataFrame: _description_
+        pd.DataFrame: Look points of the path including flow elements and discharing pipes in the path to be modelled as catchments.
     """    
-    pathWithLookPoints = pathDF.join(networkLookNodes.set_index(SWWM_C.OUT_NODE), on=SWWM_C.OUT_NODE).copy() 
+    pathWithLookPoints = pathDF.join(networkLookNodes, on=SWWM_C.OUT_NODE).copy() 
 
     pipesTS = pipesCatchments.reset_index().set_index(STW_C.TRUNK_PIPE_NAME).rename(columns={STW_C.DISCHARGE_PIPE_NAME:STW_C.MODELED_INPUT})
     
@@ -246,7 +249,6 @@ def checkForInitialElements(initialNode:str, lookupLinks:pd.DataFrame)->dict:
     Returns:
         dict: _description_
     """    
-    lookupLinks.set_index(SWWM_C.OUT_NODE,inplace=True)
     initialElement = {}
     
     if initialNode in lookupLinks.index:
@@ -289,7 +291,7 @@ def aggregatePathLookPoints(pathWithLookPoints:pd.DataFrame, breaklinksIndexPath
                                                                         SWWM_C.INFLOW_MEAN: 'sum', 
                                                                         SWWM_C.INFLOW_PATTERNS: 'first',
                                                                         SWWM_C.DFLOW_BASELINE: 'sum', 
-                                                                        STW_C.MODELED_INPUT:lambda x: ', '.join(str(val) for val in x if pd.notna(val))
+                                                                        STW_C.MODELED_INPUT:lambda x: ','.join(str(val) for val in x if pd.notna(val))
                                                                         }).set_index([SWWM_C.NAME]) 
     
     return pathElements
@@ -344,6 +346,7 @@ def getTrunkModels(links:pd.DataFrame, networkLookNodes:pd.DataFrame, outfile:st
         tuple[list[str],tuple[list,list]]: Names  of the connecting pipes to the trunk that were selected as branches to model in detail.
         Models representing the trunk with the list of tank series models and a list of catchments models.
     """    
+    print("-------------------------------Obtaining and modelling the Trunk -------------------------------------------------")
     trunkDF = findTrunk(idWRRF,outfile,links,idTrunkIni) #df of the network's trunk
 
     branches, trunkModelsTanks, trunkModelsCatch = modelPath(trunkDF,True,links,networkLookNodes,outfile,nodeMeasurementFlow,patterns) 
@@ -363,15 +366,17 @@ def getBranchesModels(links:pd.DataFrame, networkLookNodes:pd.DataFrame, outfile
     Returns:
         dict[dict]: A dictionary for each branch using as key the name of the pipe discharging into the trunk. A branch dictionary has a list of tank series models and a list of catchments models 
     """    
+    print("-------------------------------Obtaining and converting the branches --------------------------------------------------")
     branchesModels = {}
 
     for branch in branches.index:#TODO this only works if there is only one pipe discahrging in that node
         
-        nodeStartBranchTRunk = links.loc[branch,SWWM_C.OUT_NODE] #gets the node that connect to the main trunk and start the branch trunk
+        print("--------------------------Obtaining and modelling branch ",branch,"-------------------------------------------")
+        nodeStartBranchTRunk = links.loc[branch,SWWM_C.IN_NODE] 
 
         pathDF = fp.findMainFlowPath(nodeStartBranchTRunk,outfile,links)
 
-        branchModelsTanks, branchModelsCatch = modelPath(pathDF,False,links,networkLookNodes,outfile,nodeMeasurementFlow,patterns) 
+        bRelevant, branchModelsTanks, branchModelsCatch = modelPath(pathDF,False,links,networkLookNodes,outfile,nodeMeasurementFlow,patterns) 
 
         branchesModels[branch] = {} #creates the dictionary inside the dictionary with key the first pipe of the branch
         branchesModels[branch][STW_C.PATH] = branchModelsTanks

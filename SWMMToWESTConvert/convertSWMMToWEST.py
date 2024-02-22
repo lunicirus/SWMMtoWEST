@@ -72,6 +72,7 @@ def calculateSewerValues(group,shapeType: str):
     elif (shapeType == SWMM_C.REC) or (shapeType == SWMM_C.REC2):
         area = diam**2
     else:
+        assert True
         area = 0
 
     Qmax = area*(-2*math.log(a+b)*c) if slope > 0 else 0 # m3/d
@@ -132,9 +133,20 @@ def createCatchmentWEST(name, element, timePatterns, isEnd=True):
     return catchment
 
 #It creates a catchment element in west with the timeseries of the input
-def createInputWEST(name,input,tsInputs):
+def createInputWEST(name:str,input:str,tsInputs:'pd.DataFrame')->dict:
+    """TODO 
 
+    Args:
+        name (str): _description_
+        input (str): _description_
+        tsInputs (pd.DataFrame): _description_
+
+    Returns:
+        dict: _description_
+    """
     inputWEST = {}
+    npeople = None
+    tPatternP= None
 
     inputWEST[STW_C.NAME] = name + "[input]"
 
@@ -143,9 +155,11 @@ def createInputWEST(name,input,tsInputs):
     inputWEST[STW_C.DF_BASELINE] = 0
     
     #converts the time series into a pattern and number of people
-    timeserie = tsInputs[input]
-    tPatternP, averageDWF = convertTimeSeriesIntoDWF(timeserie)
-    npeople = convertMeanSWMMFlowToNPeopleWEST(averageDWF)
+    if input:
+        columns_to_sum = input.split(',') 
+        result_series = tsInputs[columns_to_sum].sum(axis=1) 
+        tPatternP, averageDWF = convertTimeSeriesIntoDWF(result_series)
+        npeople = convertMeanSWMMFlowToNPeopleWEST(averageDWF)
     
     inputWEST[STW_C.N_PEOPLE] = npeople
     inputWEST[STW_C.TIMEPATTERN] = tPatternP
@@ -253,7 +267,7 @@ def getPathElements(dfs,elements, initialElements,timePatterns,tSConnectedPoints
         tankIndex += n
                 
         #Creates and adds a catchment and/or and dwf to their list if they are connected at the beggining of the path
-        if firstSection and (initialElements is not {}):
+        if firstSection and initialElements:
             catchment = createCatchmentWEST(name, initialElements,timePatterns,False)
             catchments.append(catchment)
             

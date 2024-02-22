@@ -18,6 +18,7 @@ def getsNetwork(networkFile:str)-> tuple[dict,str]:
         tuple[dict,str]: Dictionary with links, leaves, catchments, DWFs, timepatterns, directflows and timeseries of the network. 
         Path to the .out of the network.
     """    
+    print("------------------------Getting the elements from the network ------------------------------------------------")
     model = swmmio.Model(networkFile) # Instantiate a swmmio model object
     outfile = getSimulationResultsFile(networkFile) # gets the .out file 
     
