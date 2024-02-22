@@ -233,15 +233,10 @@ def getPathLookPoints(pathDF:pd.DataFrame, networkLookNodes:pd.DataFrame, pipesC
 
     pipesTS = pipesCatchments.reset_index().set_index(STW_C.TRUNK_PIPE_NAME).rename(columns={STW_C.DISCHARGE_PIPE_NAME:STW_C.MODELED_INPUT})
     
-    pathWithLookPoints.to_csv('pathWithLookPoints.csv')
-
-    pathWithLookPoints = pathWithLookPoints.join(pipesTS.drop(columns=[SWWM_C.OUT_NODE]))
-
-    pipesTS.to_csv('pipesTS.csv')
+    pathWithLookPoints = pathWithLookPoints.join(pipesTS.drop(columns=[SWWM_C.OUT_NODE]),on=SWWM_C.NAME)
 
     return pathWithLookPoints
 
-#checks if the initial node of the path is a outlet node of a catchment and if it is, it returns its area
 def checkForInitialElements(initialNode:str, lookupLinks:pd.DataFrame)->dict:
     """_summary_
         #TODO
@@ -263,8 +258,8 @@ def checkForInitialElements(initialNode:str, lookupLinks:pd.DataFrame)->dict:
         initialElement[SWWM_C.INFLOW_MEAN] = lookupLinks.loc[initialNode,SWWM_C.INFLOW_MEAN]
         initialElement[SWWM_C.INFLOW_PATTERNS] = lookupLinks.loc[initialNode,SWWM_C.INFLOW_PATTERNS]
         initialElement[SWWM_C.DFLOW_BASELINE] = lookupLinks.loc[initialNode,SWWM_C.DFLOW_BASELINE]
-        initialElement[STW_C.MODELED_INPUT] = lookupLinks.loc[initialNode,STW_C.MODELED_INPUT]
-            
+        #TODO need to add in case there is a discharging pipe in the initial node
+
     return initialElement
 
 def checkUniqueDWFPatterns(lookPointsPath:pd.DataFrame):
@@ -294,7 +289,7 @@ def aggregatePathLookPoints(pathWithLookPoints:pd.DataFrame, breaklinksIndexPath
                                                                         SWWM_C.INFLOW_MEAN: 'sum', 
                                                                         SWWM_C.INFLOW_PATTERNS: 'first',
                                                                         SWWM_C.DFLOW_BASELINE: 'sum', 
-                                                                        STW_C.MODELED_INPUT:lambda x: ', '.join(x) 
+                                                                        STW_C.MODELED_INPUT:lambda x: ', '.join(str(val) for val in x if pd.notna(val))
                                                                         }).set_index([SWWM_C.NAME]) 
     
     return pathElements
