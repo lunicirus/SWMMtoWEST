@@ -234,7 +234,7 @@ def getPathElementsDividingByDiam(dfs,elements, initialElements,timePatterns,tSC
     
             
     print("----------------------------")
-    print("Final number of pipe sections ", len(pipesSection))
+    print("Final number of pipe sections: ", len(pipesSection))
     print("Final number of catchments: ", len(catchments))
     print("Final number of tanks in series:", pipesSection[-1][STW_C.TANK_INDEXES][-1])
                             

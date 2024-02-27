@@ -83,9 +83,6 @@ def getPathToWTP(WTP_Tank:str,linksDF:'pd.DataFrame',leaves)-> dict:
     Returns:
         _type_: _description_
     """    
-
-    #linksDF[SEL] = False
-
     paths = {}
 
     # Repeat for each point
