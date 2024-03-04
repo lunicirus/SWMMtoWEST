@@ -211,7 +211,7 @@ def dividesPathByBreakPoints(linksPath:pd.DataFrame,linksToBreak:pd.DataFrame)->
         linksPath (pd.DataFrame): Links in the path
         linksToBreak (pd.DataFrame): Pipes where the path should be cutted. 
     Returns:
-        tuple[list[pd.DataFrame],pd.Index]: Set of pipe sections cutted using the cut points. Index of the cut points in the complete path 
+        tuple[list[pd.DataFrame],list[int]]: Set of pipe sections cutted using the cut points. List of the cut points indexes in the complete path 
     """   
     indexCut= linksToBreak.index
     indexCutLinks = list(indexCut + 1)
@@ -219,7 +219,7 @@ def dividesPathByBreakPoints(linksPath:pd.DataFrame,linksToBreak:pd.DataFrame)->
     dfs = [linksPath.iloc[i:j] for i, j in zip([0] + indexCutLinks, indexCutLinks + [len(linksPath)])]
     print("Number of resulting sections of the path" , len(dfs))
 
-    return dfs, indexCut
+    return dfs, list(indexCut)
 
 def getPathLookPoints(pathDF:pd.DataFrame, networkLookNodes:pd.DataFrame, pipesCatchments:pd.DataFrame)->pd.DataFrame:
     """
@@ -272,20 +272,22 @@ def checkUniqueDWFPatterns(lookPointsPath:pd.DataFrame):
 
 def aggregatePathLookPoints(pathWithLookPoints:pd.DataFrame, breaklinksIndexPath:list[int])->pd.DataFrame:
     """
-        Joins the linkpath df to the lookpoints and aggregates elements at break links.
-        checks for elements at the initial point of the path
+        Aggregates the values of the path look points at the closest cut point in the path. 
     Args:
-        linksPath (pd.DataFrame): Links in the main path.
-        lookPointsNetwork (pd.DataFrame): Flow elements of the network. Cols are outnode and the values of the elements.
-        breaklinksIndexPath (pd.Index): Index of the cut points of the path. #TODO change documentation add new args
+        pathWithLookPoints (pd.DataFrame): Look points of the path (i.e., flow elements and connected pipes to be modelled as catchments). 
+                                            Index is the order of the pipe in the path and columns are the values of the elements.
+        breaklinksIndexPath (list[int]): Index of the cut points of the path. 
     Returns:
-        tuple[pd.DataFrame,dict]: Path elements within the path. Elements at the start of the path.
+        pd.DataFrame: Aggregated look points of the path.
     """    
-    pathWithLookPoints[STW_C.BREAK_POINT] = pathWithLookPoints.index.to_series().apply(lambda idx: min((n for n in breaklinksIndexPath if n >= idx), default=None))
-    
-    checkUniqueDWFPatterns(pathWithLookPoints) #TODO check this!
+    if breaklinksIndexPath:
+        pathWithLookPoints[STW_C.BREAK_POINT] = pathWithLookPoints.index.to_series().apply(lambda idx: min((n for n in breaklinksIndexPath if n >= idx), default=None))
+    else:
+        pathWithLookPoints[STW_C.BREAK_POINT] = pathWithLookPoints.index[-1] #TODO check this!
 
-    # Groups by the sections elements to the nearest break point --------------------------------------------------------------------
+    checkUniqueDWFPatterns(pathWithLookPoints) #TODO check this!
+    
+    # Groups by the sections elements to the nearest break point ----------------------------------------------------------
     pathElements = pathWithLookPoints.groupby([STW_C.BREAK_POINT]).agg({SWWM_C.NAME: 'last',
                                                                         SWWM_C.AREA:'sum', 
                                                                         SWWM_C.INFLOW_MEAN: 'sum', 
@@ -312,7 +314,7 @@ def modelPath(pathDF:pd.DataFrame, isTrunk:bool, links:pd.DataFrame, networkLook
     """    
     relevantBranches, tsPipeCatchments, pipesCatchments = selectBranches(outfile,pathDF,links,isTrunk) 
 
-    #Gets the break points and divides the path in various sections (dfs)  
+    #Gets the break points and divides the path in various sections (dfs)  TODO update green comments
     linksToBreak = getBreakPoints(pathDF, relevantBranches, nodeMeasurementFlow)
     pathDfs, indexbreakLinks = dividesPathByBreakPoints(pathDF,linksToBreak) 
 

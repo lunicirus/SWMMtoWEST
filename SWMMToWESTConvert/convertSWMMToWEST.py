@@ -274,7 +274,7 @@ def getPathElements(dfs,elements, initialElements,timePatterns,tSConnectedPoints
             firstSection = False
          
         #Creates and adds a catchment and/or a dwf to their list if they are connected to the end part of the sewer section
-        connectingPipe= df.iloc[-1,0]
+        connectingPipe= df.iloc[-1][SWMM_C.NAME]
         if connectingPipe in elements.index:
 
             element = elements.loc[connectingPipe].copy()
