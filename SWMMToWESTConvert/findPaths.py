@@ -109,7 +109,7 @@ def getPathToWTP(finalDownstreamNode:str,linksDF:'pd.DataFrame',leaves:list[str]
         linksDF (pd.DataFrame): links of the network and their attributes
         leaves (list[str]): List of nodes from which the path is wanted to the final node
     Returns:
-        dict[list[str]]: the keys are the leaves and values are list with the pipes of the path going downstream.
+        dict[list[str]]: the keys are the leaves and values are list with the pipes of the path going from upstream to downstream.
     """    
     paths = {}
 
@@ -149,19 +149,16 @@ def findMainFlowPath(endNode:str,outPath:str,linksNetwork:'pd.DataFrame')-> 'pd.
         endNode (str): name of the end node (i.e. WRRF). 
         outPath (str): path of the .out of the network SWMM model.
         linksNetwork (pd.DataFrame): all links of the network with name as index and its characteristics and connecting nodes as attributes.
-
     Returns:
         pd.DataFrame: links selected as part of the trunk with name as index and its characteristics and connecting nodes as attributes. 
-                      ordered downstream to upstream
+                      ordered upstream to downstream.
     """
     nodeEval = endNode
     trunk = []
     trunkDF = None
 
     try:
-
         while nodeEval is not None:
-
             previousPipes = linksNetwork[linksNetwork[SWWM_C.OUT_NODE]==nodeEval].copy() #gets all the pipes discharging to the evaluated node
 
             if previousPipes.shape[0] != 0: 
@@ -173,15 +170,13 @@ def findMainFlowPath(endNode:str,outPath:str,linksNetwork:'pd.DataFrame')-> 'pd.
                 trunk.append(pipeTrunk) #adds the selected pipe to the list of the trunk
 
                 nodeEval = previousPipes.loc[pipeTrunk,SWWM_C.IN_NODE] #Gets the  name of the inital node of the pipe selected
-
             else:
                 nodeEval = None
 
-        trunkDF = linksNetwork.loc[trunk].copy() #gets the attributes of the pipes in the trunk and its ordered downstream to upstream
+        trunkUptoDownstream = trunk[::-1]
+        trunkDF = linksNetwork.loc[trunkUptoDownstream].copy() #gets the attributes of the pipes in the trunk and its ordered downstream to upstream
 
     except Exception as e:
-
         print("Error finding the main water path: ", e)
-
 
     return trunkDF
