@@ -101,8 +101,8 @@ def selectRelevantBranches(fileOut:str, isTrunk:bool, pipesConnected:pd.DataFram
                                        before the discharge.
     Returns:
         tuple[pd.DataFrame,pd.DataFrame,pd.DataFrame]: Time series of the pipes to be modelled as catchments, with name as columns and index the datetime.
-                                               Pipes names of the connected pipes selected as relevant. #TODO change this and under explaining the datafram
-                                               Pipes in the trunk where a discharging pipe that is going to be modelled as catchment
+                                               Names of the connected pipes selected as relevant. Index is the name of the discharging pipe, columns are outnode and trunk pipe.
+                                               Pipes in the trunk where a discharging pipe that is going to be modelled as catchment.Index is the name of the discharging pipe, columns are outnode and trunk pipe.
     """    
     tsDFCatchments = pd.DataFrame()
     relevantBranches = []
@@ -137,21 +137,22 @@ def selectBranches(fileOut:str, mainPath:pd.DataFrame,links:pd.DataFrame,isTrunk
         For this, it compares the flow timeseries of the connected pipe and the trunk before the connection. 
         If the flow of the pipe is larger than a set limit then it is selected as a branch.
         In case of the trunk, branches should be modeled in detail (tank series) and others just as a catchment.
-        In case of a branch, sub branches will be model as catchments in the spot and others aggregated at the next cut point.
+        In case of a branch, sub relevant branches will be model as catchments in the spot and others aggregated at the next cut point.
     Args:
         fileOut (str): Path of the .out file created by SWMM after running the model with the flowrate timeseries of the pipes
         mainPath (pd.DataFrame): links in the main path
         links (pd.DataFrame): All the links of the network
         trunk (bool): Whether the path is the trunk of the network or not.
     Returns:
-        tuple[list[str],pd.DataFrame,pd.DataFrame]: Connected pipes names selected as relevant branches. 
+        tuple[pd.DataFrame,pd.DataFrame,pd.DataFrame]: Connected pipes selected as relevant branches. Index is the name of the discharging pipe, columns are outnode and trunk pipe.
                                             Timeseries of the pipes selected as catchments in columns index is datetime. For istrunk, these are only the not relevant, in other case it is all.
+                                            Pipes selected as catchments. Index is the name of the discharging pipe, columns are outnode and trunk pipe.
     """    
     pipesConnected = getPipesConnectedToPath(mainPath, links) #Gets the pipes connected to the path
     
     tsDFCatchments, relevantBranchCon, pipesCatchments = selectRelevantBranches(fileOut, isTrunk, pipesConnected)
 
-    return relevantBranchCon, tsDFCatchments, pipesCatchments #TODO change the documentation 
+    return relevantBranchCon, tsDFCatchments, pipesCatchments 
 
 def convertListPathtoDF(path:list[str], linksNetwork:pd.DataFrame)->pd.DataFrame:
     """
@@ -270,6 +271,22 @@ def checkUniqueDWFPatterns(lookPointsPath:pd.DataFrame):
     assert len(lookPointsPath[STW_C.BREAK_POINT][groupedPatterns > 1].unique()) == 0,f"Sewer sections with different DWF patterns are trying to be grouped."  
     assert lookPointsPath[SWWM_C.NAME].nunique() == lookPointsPath.shape[0],f"There are duplicate names"
 
+def setAggregationNodes(pathWithLookPoints, breaklinks:list[int])->pd.DataFrame:
+    """
+        Set the aggregated node to the closest downstream node. In other words, finds the minimum value in breaklinks that is greater than or 
+        equal to the current index idx and sets it as the aggregation point. 
+        If there is no value that satisfies this condition, the last index of the path is returned.
+    Args:
+        pathWithLookPoints (pd.DataFrame):  Look points of the path (i.e., flow elements and connected pipes to be modelled as catchments). 
+                                            Index is the order of the pipe in the path and columns are the values of the elements.
+        breaklinks (list[int]): Index of the cut points of the path. 
+    Returns:
+        pd.DataFrame: Look points of the path with the break point at which their values should be aggregated.
+    """    
+    pathWithLookPoints[STW_C.BREAK_POINT] = pathWithLookPoints.index.to_series().apply(lambda idx: min((n for n in breaklinks if n >= idx), default= pathWithLookPoints.index[-1]))
+
+    return pathWithLookPoints
+
 def aggregatePathLookPoints(pathWithLookPoints:pd.DataFrame, breaklinksIndexPath:list[int])->pd.DataFrame:
     """
         Aggregates the values of the path look points at the closest cut point in the path. 
@@ -280,10 +297,7 @@ def aggregatePathLookPoints(pathWithLookPoints:pd.DataFrame, breaklinksIndexPath
     Returns:
         pd.DataFrame: Aggregated look points of the path.
     """    
-    if breaklinksIndexPath:
-        pathWithLookPoints[STW_C.BREAK_POINT] = pathWithLookPoints.index.to_series().apply(lambda idx: min((n for n in breaklinksIndexPath if n >= idx), default=None))
-    else:
-        pathWithLookPoints[STW_C.BREAK_POINT] = pathWithLookPoints.index[-1] #TODO check this!
+    pathWithLookPoints = setAggregationNodes(pathWithLookPoints, breaklinksIndexPath)
 
     checkUniqueDWFPatterns(pathWithLookPoints) #TODO check this!
     
@@ -298,23 +312,27 @@ def aggregatePathLookPoints(pathWithLookPoints:pd.DataFrame, breaklinksIndexPath
     
     return pathElements
 
-def modelPath(pathDF:pd.DataFrame, isTrunk:bool, links:pd.DataFrame, networkLookNodes:pd.DataFrame, outfile:str, nodeMeasurementFlow:list[str], networkPatterns:dict[list]):
+def modelPath(pathDF:pd.DataFrame, isTrunk:bool, links:pd.DataFrame, networkLookNodes:pd.DataFrame, outfile:str,
+               nodeMeasurementFlow:list[str], networkPatterns:dict[list])->tuple[pd.DataFrame,list[dict],list[dict]]:
     """
-        #TODO return definitions, y doc!
+        #Selects the relevant branches of the path, divides the path in sections, aggregates flow elements discharging directly into the path, 
+        and creates the models of the tanks in series and catchments to represent the path. 
     Args:
         pathDF (pd.DataFrame): Links in the main path.
         isTrunk (bool): True if the path to model is the main trunk of the network.
         links (pd.DataFrame): Links of the network
         networkLookNodes (pd.DataFrame): Flow elements of the network. Cols are outnode and the values of the elements.
         outfile (str): Path to the .out of the network.
-        nodeMeasurementFlow (list[str]): _description_
-        networkPatterns #TODO!!
+        nodeMeasurementFlow (list[str]): List of nodes where field measurements are taken.
+        networkPatterns (dict[list]):Patterns of the network. 
     Returns:
-        _type_: _description_
+        tuple[pd.DataFrame,list[dict],list[dict]]:  Connected pipes selected as relevant branches. Index is the name of the discharging pipe, columns are outnode and trunk pipe.
+                                                    List of tank series models representing the path.
+                                                    List of catchments models representing the path.
     """    
     relevantBranches, tsPipeCatchments, pipesCatchments = selectBranches(outfile,pathDF,links,isTrunk) 
 
-    #Gets the break points and divides the path in various sections (dfs)  TODO update green comments
+    #Gets the break points and divides the path in various sections (dfs)  
     linksToBreak = getBreakPoints(pathDF, relevantBranches, nodeMeasurementFlow)
     pathDfs, indexbreakLinks = dividesPathByBreakPoints(pathDF,linksToBreak) 
 
@@ -326,8 +344,6 @@ def modelPath(pathDF:pd.DataFrame, isTrunk:bool, links:pd.DataFrame, networkLook
     initialPathNode = pathDF.iloc[0][SWWM_C.IN_NODE]
     initialPathElements = checkForInitialElements(initialPathNode,networkLookNodes) 
 
-    #converts the group of pipes into sewer sections, catchments, and dwf
-    #TODO check for where timeseries to convert it to catchments
     branchModelsTanks, branchModelsCatch = cw.getPathElements(pathDfs,pathElements,initialPathElements,
                                                                         networkPatterns,tsPipeCatchments)
 
@@ -336,12 +352,13 @@ def modelPath(pathDF:pd.DataFrame, isTrunk:bool, links:pd.DataFrame, networkLook
 def getTrunkModels(links:pd.DataFrame, networkLookNodes:pd.DataFrame, outfile:str, nodeMeasurementFlow:list[str], 
                    patterns:dict[list], idWRRF:str, idTrunkIni:str=None)->tuple[list[str],tuple[list,list]]:
     """
-        Find the trunk of the model, selects the representative branches and converts the trunk into WEST models.
+        Find the trunk of the model, selects the relevant branches and converts the trunk and the selected branches into WEST models.
     Args:
-        links (pd.DataFrame): Links of the network
+        links (pd.DataFrame): Links of the network. Rows are the pipes.
         networkLookNodes (pd.DataFrame): Flow elements of the network. Cols are outnode and the values of the elements.
         outfile (str): Path to the .out of the network.
-        #TODO add nodeMeasurementeFlow and patterns
+        nodeMeasurementFlow (list[str]): List of nodes where field measurements are taken.
+        patterns (dict[list]): Patterns of the network. 
         idWRRF (str): Name in the .inp of the node representing the entrance of the WRRF.
         idTrunkIni (str,optional): Id name of the most upstream node of the trunk in the .inp. Defaults to None.
     Returns:
@@ -363,8 +380,9 @@ def getBranchesModels(links:pd.DataFrame, networkLookNodes:pd.DataFrame, outfile
         links (pd.DataFrame): Links of the network
         networkLookNodes (pd.DataFrame): Flow elements and measured nodes of the network. Cols are outnode and the values of the elements.
         outfile (str): Path of the .out file created by SWMM after running the model with the flowrate timeseries of the pipes
+        nodeMeasurementFlow (list[str]): List of nodes where field measurements are taken.
+        patterns (dict[list]): Patterns of the network.
         branches (list[str]): names  of the connecting pipes to the trunk that were selected as branches to model in detail.
-        #TODO add nodeMeasurementFlow and patterns
     Returns:
         dict[dict]: A dictionary for each branch using as key the name of the pipe discharging into the trunk. A branch dictionary has a list of tank series models and a list of catchments models 
     """    
