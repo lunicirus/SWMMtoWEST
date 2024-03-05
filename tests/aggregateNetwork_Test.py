@@ -36,3 +36,25 @@ def test_findTrunk_with_unknown_start_point():
     # Assert that the result matches the expected result
     pd.testing.assert_frame_equal(result, expected_result)
 
+
+#TODO check and run these tests
+def test_min_index_exists():
+    # Test when a minimum index exists in breaklinksIndexPath
+    pathWithLookPoints = pd.DataFrame({'col1': [1, 2, 3]}, index=[0, 2, 4])
+    breaklinksIndexPath = [1, 3]
+    expected_result = pd.Series([1, 3, 4], index=[0, 2, 4])
+    assert (an.setAggregationNodes(pathWithLookPoints, breaklinksIndexPath) == expected_result).all()
+
+def test_min_index_does_not_exist():
+    # Test when no minimum index exists in breaklinksIndexPath
+    pathWithLookPoints = pd.DataFrame({'col1': [1, 2, 3]}, index=[0, 2, 4])
+    breaklinksIndexPath = [5, 6]
+    expected_result = pd.Series([4, 4, 4], index=[0, 2, 4])
+    assert (an.setAggregationNodes(pathWithLookPoints, breaklinksIndexPath) == expected_result).all()
+
+def test_empty_breaklinksIndexPath():
+    # Test when breaklinksIndexPath is empty
+    pathWithLookPoints = pd.DataFrame({'col1': [1, 2, 3]}, index=[0, 2, 4])
+    breaklinksIndexPath = []
+    expected_result = pd.Series([4, 4, 4], index=[0, 2, 4])
+    assert (an.setAggregationNodes(pathWithLookPoints, breaklinksIndexPath) == expected_result).all()

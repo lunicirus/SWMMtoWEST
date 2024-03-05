@@ -24,12 +24,16 @@ def test_getLinksWithSlope(sample_model):
     
     # Check if the result is a DataFrame
     assert isinstance(result, pd.DataFrame)
+
+    # Check that the correct number of links are there
+    assert len(result) == 1532
     
     # Check if the columns are present in the result
     expected_columns = [SWWM_C.IN_NODE,SWWM_C.OUT_NODE,SWWM_C.LEN,SWWM_C.DIAM,SWWM_C.MAX_Q,SWWM_C.ROUG,SWWM_C.SHAPE,STW_C.SLOPE]
     assert result.columns.tolist() == expected_columns
     
     # Check if the slope is calculated correctly
+    
     #expected_slope = [(200 - 100) / 100, (250 - 150) / 150] #TODO!!
     #assert result['slope'].tolist() == expected_slope
     
