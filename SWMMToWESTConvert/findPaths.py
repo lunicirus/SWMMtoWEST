@@ -2,25 +2,40 @@ import SWMMToWESTConvert.SWMM_InpConstants as SWWM_C
 import SWMMToWESTConvert.getNetworkFromSWMM as gnfs
 
 
-#Adds the linkOut to the path 
-def addLinkToPath(linkOut,pipesPath):
-    
-    linkOutName = linkOut.name
-    
-    pipesPath.append(linkOutName)
 
-    #Get's the node after the selected link
-    nodeAux = linkOut[SWWM_C.OUT_NODE]
+def addLinkToPath(linkAux:'pd.Series',pipesPath:list[str])->tuple[str,list[str]]:
+    """
+        Adds the link to the path and obtains its nodeout
+    Args:
+        linkAux (pd.Series): link to add to the path and its attributes
+        pipesPath (list[str]): links in the path 
+    Returns:
+        tuple[str,list[str]]: Most downstream node of the path. List of pipes in the path
+    """    
+    
+    pipesPath.append(linkAux.name) 
+    
+    nodeAux = linkAux[SWWM_C.OUT_NODE] #Get's the node after the selected link
     
     return nodeAux, pipesPath
 
-#It only reroutes twice
-#Go to the last node a decision was made, and removes the links added to the path aftar that node
-#changes to the next pipe at the decision node
-def reRoute(nodesDecision,links,pipesPath):
-    
+
+def reRoute(nodesDecision:list[str],links:'pd.DataFrame',pipesPath:list[str])->tuple['pd.Series',list[str],list[str]]:
+    """
+        Go to the last node a decision was made, and changes the pipe at the decision. It only reroutes twice 
+        TODO make more general (nodes with 3 pipes)
+        It also updates the path by removing the links added to the path after that node. 
+    Args:
+        nodesDecision (list[str]): List of nodes where a decision was made to construct the path.
+        links (pd.DataFrame): Links of the network and their attributes.
+        pipesPath (list[str]): List of pipes in the path already.
+    Returns:
+        tuple['pd.Series',list[str],list[str]]: The next pipe to be added to the path. 
+                                                The modified path after the reroute.
+                                                The nodes where a decision has been made in the path. 
+    """   
     #Go to the last node a decision was made
-    linksOut = links[links[SWWM_C.IN_NODE] == nodesDecision.pop()].sort_values(by=[SWWM_C.MAX_Q,SWWM_C.DIAM], ascending=False)
+    linksOut = links[links[SWWM_C.IN_NODE] == nodesDecision.pop()].sort_values(by=[SWWM_C.MAX_Q,SWWM_C.DIAM], ascending=False) 
     
     i=0
     linkDelete = linksOut.iloc[i]
@@ -34,21 +49,34 @@ def reRoute(nodesDecision,links,pipesPath):
     del pipesPath[iToDelete:]
 
     #selects other pipe 
-    linkOut = linksOut.iloc[i+1]
+    linkAux = linksOut.iloc[i+1]
     
-    return linkOut, pipesPath, nodesDecision
+    return linkAux, pipesPath, nodesDecision
 
-def lookForPath(WTP_Tank,nodeAux,links:'pd.DataFrame',pipesPath,nodesDecision):
-    
+def lookForPath(finalDownstreamNode:str,initialNodeUpstream:str,links:'pd.DataFrame',pipesPath:list[str],
+                nodesDecision:list[str])->tuple[list[str],list[str],str]:
+    """TODO complete description
+
+    Args:
+        finalDownstreamNode (str): id name of the node downstream where the paths must finish. 
+        initialNodeUpstream (str): id name of the node upstream the leaves where the paths starts. 
+        links (pd.DataFrame): Links of the network and their attributes.
+        pipesPath (list[str]): List of pipes in the path already.
+        nodesDecision (list[str]): List of nodes where a decision was made to construct the path.
+    Returns:
+        tuple[list[str],list[str],str]: Pipes in the path. 
+                                        Nodes where a decision was made to construct the path. 
+                                        Id name of the node upstream the leaves where the paths starts. 
+    """    
     endPoint = False
     
-    while (nodeAux != WTP_Tank) and (not endPoint):
+    while (initialNodeUpstream != finalDownstreamNode) and (not endPoint):
         
         #Gets the links out of the node evaluated
-        linksOut = links[links[SWWM_C.IN_NODE] == nodeAux].copy()
+        linksOut = links[links[SWWM_C.IN_NODE] == initialNodeUpstream].copy()
 
         if(linksOut.shape[0] > 1):
-            nodesDecision.append(nodeAux) #Saves the last decision of this path
+            nodesDecision.append(initialNodeUpstream) #Saves the last decision of this path
 
         #Orders and select the links by largest diameter/full height and length (although pumps have length 0 )
         if linksOut.empty:
@@ -65,23 +93,23 @@ def lookForPath(WTP_Tank,nodeAux,links:'pd.DataFrame',pipesPath,nodesDecision):
                 else:
                     linkOut,pipesPath,nodesDecision = reRoute(nodesDecision,links, pipesPath)
 
-            nodeAux, pipesPath = addLinkToPath(linkOut,pipesPath)
+            initialNodeUpstream, pipesPath = addLinkToPath(linkOut,pipesPath)
          
             
-    return pipesPath, nodesDecision, nodeAux
+    return pipesPath, nodesDecision, initialNodeUpstream
 
 
 #Could be replaced by using this swmmio.utils.functions.find_network_trace()
-def getPathToWTP(WTP_Tank:str,linksDF:'pd.DataFrame',leaves)-> dict:
+def getPathToWTP(finalDownstreamNode:str,linksDF:'pd.DataFrame',leaves:list[str])-> dict[list[str]]:
     """
-        Get all paths from leaves (end nodes or the network) to a specific node
+        Get all paths from leaves (end nodes or the network) to a specific final node (downstream the leaves), 
+        starting at the leave and going downstream to the final node.
     Args:
-        WTP_Tank (str): id name of the WRRF
+        finalDownstreamNode (str): id name of the node downstream the leaves where the paths must finish.
         linksDF (pd.DataFrame): links of the network and their attributes
-        leaves (_type_): _description_ #TODO
-
+        leaves (list[str]): List of nodes from which the path is wanted to the final node
     Returns:
-        _type_: _description_
+        dict[list[str]]: the keys are the leaves and values are list with the pipes of the path going downstream.
     """    
     paths = {}
 
@@ -91,10 +119,9 @@ def getPathToWTP(WTP_Tank:str,linksDF:'pd.DataFrame',leaves)-> dict:
         pathsAux = []
         decisionsN = []
         
-        #find the path for a point to the treatment plant
-        pathsAux, decisionsN, endNode = lookForPath(WTP_Tank,iniNode,linksDF,pathsAux,decisionsN)
+        pathsAux, decisionsN, endNode = lookForPath(finalDownstreamNode,iniNode,linksDF,pathsAux,decisionsN)
 
-        while (endNode != WTP_Tank):
+        while (endNode != finalDownstreamNode):
 
             try:
                 linkOut,pathsAux,decisionsN = reRoute(decisionsN,linksDF, pathsAux)
@@ -107,10 +134,9 @@ def getPathToWTP(WTP_Tank:str,linksDF:'pd.DataFrame',leaves)-> dict:
             nodeAux, pathsAux = addLinkToPath(linkOut,pathsAux)
 
             #Looks for the path again
-            pathsAux,decisionsN,endNode = lookForPath(WTP_Tank,nodeAux,linksDF,pathsAux,decisionsN)
+            pathsAux,decisionsN,endNode = lookForPath(finalDownstreamNode,nodeAux,linksDF,pathsAux,decisionsN)
 
-        #Saves the list of pipes
-        paths[iniNode] = pathsAux
+        paths[iniNode] = pathsAux  #Saves the list of pipes
             
     return paths
 
