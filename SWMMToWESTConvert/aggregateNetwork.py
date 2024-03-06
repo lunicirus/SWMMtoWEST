@@ -172,8 +172,7 @@ def createLookPointsDF(nElements:dict)->pd.DataFrame:
     Args:
         nElements (dict): Dictionary with links, leaves, catchments, DWFs, timepatterns, directflows and timeseries of the network.
     Returns:
-        pd.DataFrame: Flow elements of the network. 
-        No index. In the cols it is the outNode and the values of each different type of element added
+        pd.DataFrame: Nodes with flow elements and their characteristics (i.e., Area,...,Baseline). Index is OutletNode.
     """    
     catchmNodes = nElements[STW_C.SUBCATCHMENTS].groupby([SWWM_C.CATCH_OUT]).agg({SWWM_C.AREA: 'sum'}).reset_index().rename( 
                                                     columns={'index':SWWM_C.OUT_NODE, SWWM_C.CATCH_OUT:SWWM_C.OUT_NODE}) #aggregates by node, and renames to be able to merge
@@ -241,27 +240,27 @@ def getPathLookPoints(pathDF:pd.DataFrame, networkLookNodes:pd.DataFrame, pipesC
 
     return pathWithLookPoints
 
-def checkForInitialElements(initialNode:str, lookupLinks:pd.DataFrame)->dict:
-    """_summary_
-        #TODO
+def checkForInitialElements(initialPipe:pd.Series, networkLookupNodes:pd.DataFrame)->dict:
+    """
+        Creates a dictionary with the flow values of the initial node of the path.
     Args:
-        initialNode (str): _description_
-        lookupLinks (pd.DataFrame): _description_
+        initialPipe (pd.Series): Initial pipe of the path (upstream)
+        networkLookupNodes (pd.DataFrame): Nodes with flow elements and their characteristics (i.e., Area,...,Baseline). Index is OutletNode.
     Returns:
-        dict: _description_
+        dict: flow values of the initial node of the path.
     """    
     initialElement = {}
+    initialNode = initialPipe[SWWM_C.IN_NODE]
     
-    if initialNode in lookupLinks.index:
+    if initialNode in networkLookupNodes.index:
         
-        assert lookupLinks.loc[[initialNode]].shape[0] <=  1 ,f"There is more than one element with equal node out in the df"
+        assert networkLookupNodes.loc[[initialNode]].shape[0] <=  1 ,f"There is more than one element with equal node out in the df"
         
         initialElement[SWWM_C.OUT_NODE] = initialNode
-        initialElement[SWWM_C.AREA] = lookupLinks.loc[initialNode,SWWM_C.AREA]
-        initialElement[SWWM_C.INFLOW_MEAN] = lookupLinks.loc[initialNode,SWWM_C.INFLOW_MEAN]
-        initialElement[SWWM_C.INFLOW_PATTERNS] = lookupLinks.loc[initialNode,SWWM_C.INFLOW_PATTERNS]
-        initialElement[SWWM_C.DFLOW_BASELINE] = lookupLinks.loc[initialNode,SWWM_C.DFLOW_BASELINE]
-        #TODO need to add in case there is a discharging pipe in the initial node
+        initialElement[SWWM_C.AREA] = networkLookupNodes.loc[initialNode,SWWM_C.AREA]
+        initialElement[SWWM_C.INFLOW_MEAN] = networkLookupNodes.loc[initialNode,SWWM_C.INFLOW_MEAN]
+        initialElement[SWWM_C.INFLOW_PATTERNS] = networkLookupNodes.loc[initialNode,SWWM_C.INFLOW_PATTERNS]
+        initialElement[SWWM_C.DFLOW_BASELINE] = networkLookupNodes.loc[initialNode,SWWM_C.DFLOW_BASELINE]
 
     return initialElement
 
@@ -312,6 +311,21 @@ def aggregatePathLookPoints(pathWithLookPoints:pd.DataFrame, breaklinksIndexPath
     
     return pathElements
 
+def removeSectionsWithoutFlow(pathDfs:list[pd.DataFrame],initialPathElements:pd.DataFrame) -> list[pd.DataFrame]:
+    """
+        If there are no initial path elements the first section is removed as it will not carry water and all elements are agregated downstream.
+    Args:
+        pathDfs (list[pd.DataFrame]): Each dataframe in the list represent a section of the path.
+        initialPathElements (pd.DataFrame): Initial elements of the path
+    Returns:
+        list[pd.DataFrame]: Dataframes representing the path without the first section if there are no initial elements in the path.
+    """    
+    if not initialPathElements:
+        pathDfs = pathDfs[1:]
+
+    return pathDfs
+
+
 def modelPath(pathDF:pd.DataFrame, isTrunk:bool, links:pd.DataFrame, networkLookNodes:pd.DataFrame, outfile:str,
                nodeMeasurementFlow:list[str], networkPatterns:dict[list])->tuple[pd.DataFrame,list[dict],list[dict]]:
     """
@@ -321,7 +335,7 @@ def modelPath(pathDF:pd.DataFrame, isTrunk:bool, links:pd.DataFrame, networkLook
         pathDF (pd.DataFrame): Links in the main path.
         isTrunk (bool): True if the path to model is the main trunk of the network.
         links (pd.DataFrame): Links of the network
-        networkLookNodes (pd.DataFrame): Flow elements of the network. Cols are outnode and the values of the elements.
+        networkLookNodes (pd.DataFrame): Nodes with flow elements and their characteristics (i.e., Area,...,Baseline). Index is OutletNode.
         outfile (str): Path to the .out of the network.
         nodeMeasurementFlow (list[str]): List of nodes where field measurements are taken.
         networkPatterns (dict[list]):Patterns of the network. 
@@ -340,9 +354,9 @@ def modelPath(pathDF:pd.DataFrame, isTrunk:bool, links:pd.DataFrame, networkLook
     pathWithLookPoints = getPathLookPoints(pathDF, networkLookNodes, pipesCatchments)
     pathElements = aggregatePathLookPoints(pathWithLookPoints,indexbreakLinks) 
 
-    #Checks for elements at the initial node of the path
-    initialPathNode = pathDF.iloc[0][SWWM_C.IN_NODE]
-    initialPathElements = checkForInitialElements(initialPathNode,networkLookNodes) 
+    #Checks for elements at the initial node of the path and if there are not it removes the first section
+    initialPathElements = checkForInitialElements(pathDF.iloc[0],networkLookNodes) 
+    pathDfs = removeSectionsWithoutFlow(pathDfs,initialPathElements)
 
     branchModelsTanks, branchModelsCatch = cw.getPathElements(pathDfs,pathElements,initialPathElements,
                                                                         networkPatterns,tsPipeCatchments)
@@ -355,7 +369,7 @@ def getTrunkModels(links:pd.DataFrame, networkLookNodes:pd.DataFrame, outfile:st
         Find the trunk of the model, selects the relevant branches and converts the trunk and the selected branches into WEST models.
     Args:
         links (pd.DataFrame): Links of the network. Rows are the pipes.
-        networkLookNodes (pd.DataFrame): Flow elements of the network. Cols are outnode and the values of the elements.
+        networkLookNodes (pd.DataFrame): Nodes with flow elements and their characteristics (i.e., Area,...,Baseline). Index is OutletNode.
         outfile (str): Path to the .out of the network.
         nodeMeasurementFlow (list[str]): List of nodes where field measurements are taken.
         patterns (dict[list]): Patterns of the network. 
@@ -378,7 +392,7 @@ def getBranchesModels(links:pd.DataFrame, networkLookNodes:pd.DataFrame, outfile
         For each branch it finds the main flow path, selects the relevant branches and then convert them into WEST models
     Args:
         links (pd.DataFrame): Links of the network
-        networkLookNodes (pd.DataFrame): Flow elements and measured nodes of the network. Cols are outnode and the values of the elements.
+        networkLookNodes (pd.DataFrame): Nodes with flow elements and their characteristics (i.e., Area,...,Baseline). Index is OutletNode.
         outfile (str): Path of the .out file created by SWMM after running the model with the flowrate timeseries of the pipes
         nodeMeasurementFlow (list[str]): List of nodes where field measurements are taken.
         patterns (dict[list]): Patterns of the network.
@@ -425,88 +439,3 @@ def aggregateAndModelNetwork(networkInp:str, idWRRF:str, nodeMeasurementFlow:lis
 
     return trunkModels,branchesModels
 
-
-
-
-#-----------------------------------------------------------------------------------------------------------------------------------
-#DEPRECATED----------------------------------------------------------
-
-def lookForOtherPipesConnected(linksPath,allLinks,fileOut):
-    #find the pipes connected to the path giving it flow
-
-    #Gets the links that are not in the path
-    linksPathOutNodes = linksPath.set_index(SWWM_C.NAME)[SWWM_C.OUT_NODE]
-    pipesNotPath = allLinks[~allLinks.index.isin(linksPathOutNodes.index)].copy()
-    assert allLinks.shape[0] == pipesNotPath.shape[0] + linksPath.shape[0] 
-
-    #pipesNotPath.to_csv('pipesNotInPath.csv')
-    
-    #Gets links in the network connected to the path (but not part of it)
-    pipesConnected = pipesNotPath[pipesNotPath[SWWM_C.OUT_NODE].isin(linksPathOutNodes)][[SWWM_C.OUT_NODE]].copy()
-    pipesConnectedNames = pipesConnected.index.to_list()
-    print("There are", len(pipesConnectedNames), "connections to the path")
-
-    #pipesConnected.to_csv('pipesConnected.csv')
-
-    #Check that there are no more than one pipe per outnode!! TODO
-    #-------TODO-------TODO-------TODO--------TODO-----TODO-----TODO
-
-    #Gets the timeseries of the flow from the connections to the path
-    tsDFNoZeros = None    
-    if len(pipesConnectedNames) > 0:
-        tsDF = None
-
-        with Output(fileOut) as out:
-            for pipe in pipesConnectedNames:
-                
-                ts = out.link_series(pipe, LinkAttribute.FLOW_RATE)
-                
-                if tsDF is None:
-                    tsDF = pd.DataFrame.from_dict(ts, orient='index',columns=[pipe])
-                else:
-                    tsDF = tsDF.join(pd.DataFrame.from_dict(ts, orient='index',columns=[pipe]))
-
-        #tsDF.to_csv('cleaned.csv', index=True)
-    
-        # remove columns with only zeros
-        tsDFNoZeros = tsDF.loc[:, (tsDF != 0).any(axis=0)]
-        print(tsDF.shape[1] - tsDFNoZeros.shape[1],"connections to the path were removed due to no flow at anytime.") 
-
-    #Removes from the list the pipes with only zero flow
-    outNodesNoZeros = pipesConnected[pipesConnected.index.isin(tsDFNoZeros.columns.to_list())]
-    
-    return tsDFNoZeros, outNodesNoZeros
-
-def aggregateTrunk(networkInp:str, idWTP:str, idTrunkIni:str, linkMeasurementFlow:list[str]) -> tuple[list[dict],list[dict]]:
-    
-    """It obtains the elements of the network and converts it into a trunk with elements (catchments, DWFs, DFs) attached. 
-        Then, it converts the trunk into a list of tanks in series and the elements into a list of catchments.
-    Args:
-        networkInp (str): path to the networks .inp file
-        idWTP (str): id of the water treatment plant (where the trunk finishes)
-        idTrunkIni (str): id of the initial node of the trunk 
-        linkMeasurementFlow (list[str]): list of ids of the pipes where meassurements are taken
-
-    Returns:
-         tuple[list[dict],list[dict]]: List of tanks in series (WEST models) of the trunk with its parameters, 
-                                       List of catchments (WEST models) with its parameters
-    """
-    #Gets all the elements from the network used
-    nElements, outfile = gnpd.getsNetwork(networkInp)
-    links = nElements[STW_C.LINKS]
-
-    #Get all paths from leaves to water treatment plant
-    pathsAll = fp.getPathToWTP(idWTP,links,nElements[STW_C.LEAVES])
-
-    #---------------------------------------------------------------------------------
-    #Get St sacrament path as df
-    #Pipes in the path are in order from downstream to upstream
-    trunkDF = convertListPathtoDF(pathsAll[idTrunkIni],links)
-
-    #Gets the pipes connected to the path but not part of it with their flow timeseries
-    timeSeriesPointsCon, pointsConnected  = lookForOtherPipesConnected(trunkDF,links,outfile)
-    
-    #converts the path from st sacrement to the WTP into sewer sections
-    pipesModels, catchmentsModels = convertPathToSwrSectAndCatchts(trunkDF,nElements,timeSeriesPointsCon, pointsConnected,linkMeasurementFlow) 
-
-    return pipesModels, catchmentsModels

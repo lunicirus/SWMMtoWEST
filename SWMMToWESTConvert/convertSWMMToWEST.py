@@ -53,7 +53,7 @@ def calculateSewerValues(group,shapeType: str):
     
     length = group[SWMM_C.LEN].sum()  #m
     name = group.iloc[0,0] + " - " + group.iloc[-1,0]
-    diam = group[SWMM_C.DIAM].min()  #m           #they are all the same
+    diam = np.average(group[STW_C.DIAM], weights=group[SWMM_C.LEN]) #m
     slope = np.average(group[STW_C.SLOPE], weights=group[SWMM_C.LEN])
     roughness = np.average(group[SWMM_C.ROUG], weights=group[SWMM_C.LEN]) # manning       
     roughness = convertManningToM(roughness)
@@ -241,24 +241,31 @@ def getPathElementsDividingByDiam(dfs,elements, initialElements,timePatterns,tSC
     return pipesSection, catchments
 
 
-#Each pipe section has the name as the initial and final node of the composing pipes 
-# it has the mean of the slopes of the composing pipes, the mean diameter of the group, and the total length 
-# to calculate the area it assumes the most common shape
-def getPathElements(dfs,elements, initialElements,timePatterns,tSConnectedPoints):
-    
+def getPathElements(dfs:list['pd.DataFrame'],elements:'pd.DataFrame', initialElements:dict,
+                    timePatterns:dict[list],tSDischarging:'pd.DataFrame')->tuple[list[dict],list[dict]]:
+    """
+        Converts the pipe sections into list of tank in series models and the flowelements into a list of catchment models.
+        The model of each pipe section has the name "initial-final pipe", the slope, diameter, and total length.
+        The slope and diameter are the mean weigthed by length of the composing pipes, to calculate the area it assumes the most common shape.
+    Args:
+        dfs (list[pd.DataFrame]): Sections of the path ordered from upstream to downstream, each dataframe is a section.
+        elements (pd.DataFrame): Flow elements of the path.
+        initialElements (dict): Flow elements at the initial node of the path.
+        timePatterns (dict[list]): Time patterns of the network.
+        tSDischarging (pd.DataFrame): Time series discharging into the path.
+    Returns:
+        tuple[list[dict],list[dict]]: list of tank in series models and catchments models of the path.
+    """    
     pipesSection = []
     catchments= []
     
     tankIndex = 1
     firstSection = True
     
-    #Elements are in order from upstream to downstream
-    for df in dfs:
+    for df in dfs:  #Elements are in order from upstream to downstream
 
-        #Removes elements with length zero (pumps, orifices or weirs)
-        df = df[df[SWMM_C.LEN].notna() & (df[SWMM_C.LEN] != 0)].copy()
-
-        #Obtains the most common shape 
+        
+        df = df[df[SWMM_C.LEN].notna() & (df[SWMM_C.LEN] != 0)].copy() #Removes elements with length zero (pumps, orifices or weirs) 
         mostCommonShape = df[SWMM_C.SHAPE].value_counts().idxmax()
         
         #Creates and adds the pipe section to the list
@@ -282,7 +289,7 @@ def getPathElements(dfs,elements, initialElements,timePatterns,tSConnectedPoints
 
             #If the ts is not empty it creates an input object
             if tsInput is not None:
-                input = createInputWEST(name, tsInput, tSConnectedPoints)
+                input = createInputWEST(name, tsInput, tSDischarging)
                 catchments.append(input)
 
             element.drop(labels=STW_C.MODELED_INPUT,inplace=True)
@@ -297,6 +304,8 @@ def getPathElements(dfs,elements, initialElements,timePatterns,tSConnectedPoints
     print("----------------------------")
     print("Final number of pipe sections ", len(pipesSection))
     print("Final number of catchments: ", len(catchments))
-    print("Final number of tanks in series:", pipesSection[-1][STW_C.TANK_INDEXES][-1])
+    
+    if pipesSection:
+        print("Final number of tanks in series:", pipesSection[-1][STW_C.TANK_INDEXES][-1])
                             
     return pipesSection, catchments
