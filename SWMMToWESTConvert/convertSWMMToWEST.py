@@ -53,7 +53,7 @@ def calculateSewerValues(group,shapeType: str):
     
     length = group[SWMM_C.LEN].sum()  #m
     name = group.iloc[0,0] + " - " + group.iloc[-1,0]
-    diam = np.average(group[STW_C.DIAM], weights=group[SWMM_C.LEN]) #m
+    diam = np.average(group[SWMM_C.DIAM], weights=group[SWMM_C.LEN]) #m
     slope = np.average(group[STW_C.SLOPE], weights=group[SWMM_C.LEN])
     roughness = np.average(group[SWMM_C.ROUG], weights=group[SWMM_C.LEN]) # manning       
     roughness = convertManningToM(roughness)
