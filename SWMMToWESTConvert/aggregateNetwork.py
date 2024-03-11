@@ -36,13 +36,12 @@ def findTrunk(idWRRF:str, outfile:str, links:pd.DataFrame, idTrunkIni:str=None)-
 
 def getPipesConnectedToPath(linksMainPath:pd.DataFrame, allLinks:pd.DataFrame) -> pd.DataFrame:
     """
-        Search for pipes connected to the trunk
+        Search for pipes connected to a path.
     Args:
         linksMainPath (pd.DataFrame): Links in the main path
         allLinks (pd.DataFrame): All the links of the network
     Returns:
-        pd.DataFrame: pipes connected to the trunk associated with the pipe just before their connection and the outnode.
-        #TODO update doc
+        pd.DataFrame: pipes connected to the path associated with the pipe just before their connection and the outnode.
     """    
     linksPathOutNodes = linksMainPath[[SWWM_C.OUT_NODE]] 
     pipesNotPath = allLinks[~allLinks.index.isin(linksPathOutNodes.index)].copy() #Gets the links that are not in the path
@@ -332,9 +331,9 @@ def modelPath(pathDF:pd.DataFrame, isTrunk:bool, links:pd.DataFrame, networkLook
         #Selects the relevant branches of the path, divides the path in sections, aggregates flow elements discharging directly into the path, 
         and creates the models of the tanks in series and catchments to represent the path. 
     Args:
-        pathDF (pd.DataFrame): Links in the main path.
+        pathDF (pd.DataFrame): Links in the main path. Index is the order of the pipe.
         isTrunk (bool): True if the path to model is the main trunk of the network.
-        links (pd.DataFrame): Links of the network
+        links (pd.DataFrame): Links of the network. Index is the name of the pipe.
         networkLookNodes (pd.DataFrame): Nodes with flow elements and their characteristics (i.e., Area,...,Baseline). Index is OutletNode.
         outfile (str): Path to the .out of the network.
         nodeMeasurementFlow (list[str]): List of nodes where field measurements are taken.
@@ -359,7 +358,7 @@ def modelPath(pathDF:pd.DataFrame, isTrunk:bool, links:pd.DataFrame, networkLook
     pathDfs = removeSectionsWithoutFlow(pathDfs,initialPathElements)
 
     branchModelsTanks, branchModelsCatch = cw.getPathElements(pathDfs,pathElements,initialPathElements,
-                                                                        networkPatterns,tsPipeCatchments)
+                                                                        networkPatterns,tsPipeCatchments,pathDF.iloc[0].Name)
 
     return relevantBranches,branchModelsTanks, branchModelsCatch
 

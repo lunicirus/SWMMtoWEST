@@ -55,8 +55,9 @@ def reRoute(nodesDecision:list[str],links:'pd.DataFrame',pipesPath:list[str])->t
 
 def lookForPath(finalDownstreamNode:str,initialNodeUpstream:str,links:'pd.DataFrame',pipesPath:list[str],
                 nodesDecision:list[str])->tuple[list[str],list[str],str]:
-    """TODO complete description
-
+    """
+        Obtains a path from the initialNodeUpstream to the finalDownstreamNode selecting at decision points the 
+        link with largest full Q and Geom 1 (Diameter if it is circular pipe). Removes circuits attached to the path.
     Args:
         finalDownstreamNode (str): id name of the node downstream where the paths must finish. 
         initialNodeUpstream (str): id name of the node upstream the leaves where the paths starts. 
@@ -78,11 +79,10 @@ def lookForPath(finalDownstreamNode:str,initialNodeUpstream:str,links:'pd.DataFr
         if(linksOut.shape[0] > 1):
             nodesDecision.append(initialNodeUpstream) #Saves the last decision of this path
 
-        #Orders and select the links by largest diameter/full height and length (although pumps have length 0 )
         if linksOut.empty:
             endPoint = True
         else:
-            linkOut = linksOut.sort_values(by=[SWWM_C.MAX_Q,SWWM_C.DIAM], ascending=False).iloc[0]
+            linkOut = linksOut.sort_values(by=[SWWM_C.MAX_Q,SWWM_C.DIAM], ascending=False).iloc[0] #Orders and select the links by largest diameter/full flow 
 
             #if the link selected was already selected for this iniNode then it is in a loop
             if linkOut.name in pipesPath:
