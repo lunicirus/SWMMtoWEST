@@ -65,7 +65,7 @@ def getPipesConnectedToPath(linksMainPath:pd.DataFrame, allLinks:pd.DataFrame) -
 
     return pipesConnected
 
-def evaluateBranchInfluence(fileOut:str, branchPipe:str, trunkPipeBeforeBranch:str)->tuple[bool, pd.DataFrame]:
+def evaluateRelativeBranchInfluence(fileOut:str, branchPipe:str, comparisonPipe:str)->tuple[bool, pd.DataFrame]:
     """
         Obtains the flowrate time series of the two pipes and decide if the brach is relevant or not.
         If the mean flowrate of the branch is larger than the STW_C.PERC_LIM_TO_BRANCH % of the trunk then is relevant.
@@ -77,18 +77,19 @@ def evaluateBranchInfluence(fileOut:str, branchPipe:str, trunkPipeBeforeBranch:s
         tuple[bool, pd.DataFrame]: true if the branch is relevant, time series of the flow rate of the branch
     """
     #the flow from the connections to the path and the pipe before the discharge
-    dfTS = gnpd.getFlowTimeSeries([branchPipe,trunkPipeBeforeBranch],fileOut) #Gets the timeseries of both pipes (branchPipe, trunkPipeBeforeBranch)
+    dfTS = gnpd.getFlowTimeSeries([branchPipe,comparisonPipe],fileOut) #Gets the timeseries of both pipes (branchPipe, trunkPipeBeforeBranch)
 
     meanVals = dfTS.mean() #gets the mean of both flow timeseries
     meanDischarging = meanVals[branchPipe]
-    limitFlowrate = meanVals[trunkPipeBeforeBranch] * STW_C.PERC_LIM_TO_BRANCH
+    limitFlowrate = meanVals[comparisonPipe] * STW_C.PERC_LIM_TO_BRANCH
+
 
     relevant = meanDischarging > limitFlowrate
-    tsBranch =  dfTS.drop(columns=[trunkPipeBeforeBranch])
+    tsBranch =  dfTS.drop(columns=[comparisonPipe])
 
     return relevant, tsBranch
 
-def selectRelevantBranches(fileOut:str, isTrunk:bool, pipesConnected:pd.DataFrame)->tuple[pd.DataFrame,pd.DataFrame,pd.DataFrame]:
+def selectRelevantBranches(fileOut:str, isTrunk:bool, pipesConnected:pd.DataFrame, endPathLink:str=None)->tuple[pd.DataFrame,pd.DataFrame,pd.DataFrame]:
     """
         Iterates the DF of connected pipes, selecting the relevant branches and obtaining the ts of the pipes to be modelled as catchments.
         If the path is the network's trunk only not relevant pipes will be model as catchments.
@@ -98,6 +99,7 @@ def selectRelevantBranches(fileOut:str, isTrunk:bool, pipesConnected:pd.DataFram
         isTrunk (bool): Whether the path is the trunk of the network or not
         pipesConnected (pd.DataFrame): Pipes connected to the trunk, with index the name of the pipe and a column with the trunk pipe just 
                                        before the discharge.
+        endPathLink (str): The last downstream pipe of the path to use for the comparison of the relevant pipes. Default None.
     Returns:
         tuple[pd.DataFrame,pd.DataFrame,pd.DataFrame]: Time series of the pipes to be modelled as catchments, with name as columns and index the datetime.
                                                Names of the connected pipes selected as relevant. Index is the name of the discharging pipe, columns are outnode and trunk pipe.
@@ -107,8 +109,12 @@ def selectRelevantBranches(fileOut:str, isTrunk:bool, pipesConnected:pd.DataFram
     relevantBranches = []
 
     for branch, row in pipesConnected.iterrows(): #the index (branch) is the name of the discharging pipe
-        trunkPipe = row[STW_C.TRUNK_PIPE_NAME]
-        relevant, tsCurrentBranch = evaluateBranchInfluence(fileOut, branch, trunkPipe) #Evaluates if its relevant or not
+
+        if endPathLink is None:
+            trunkPipe = row[STW_C.TRUNK_PIPE_NAME]
+            relevant, tsCurrentBranch = evaluateRelativeBranchInfluence(fileOut, branch, trunkPipe) #Evaluates if its relevant or not
+        else:
+            relevant, tsCurrentBranch = evaluateRelativeBranchInfluence(fileOut, branch, endPathLink)
             
         if ((tsCurrentBranch[branch] != 0).any()): #Checks that the values are not all zero
             if (relevant):
@@ -130,7 +136,7 @@ def selectRelevantBranches(fileOut:str, isTrunk:bool, pipesConnected:pd.DataFram
 
     return tsDFCatchments, revelantBranchesConnection, pipesWithCatchments
 
-def selectBranches(fileOut:str, mainPath:pd.DataFrame,links:pd.DataFrame,isTrunk:bool)-> tuple[pd.DataFrame,pd.DataFrame,pd.DataFrame]:    
+def selectBranches(fileOut:str, mainPath:pd.DataFrame,links:pd.DataFrame,isTrunk:bool,isRelative:bool=True)-> tuple[pd.DataFrame,pd.DataFrame,pd.DataFrame]:    
     """
         It decides if it is a pipe connected to the path is relevant.
         For this, it compares the flow timeseries of the connected pipe and the trunk before the connection. 
@@ -139,9 +145,10 @@ def selectBranches(fileOut:str, mainPath:pd.DataFrame,links:pd.DataFrame,isTrunk
         In case of a branch, sub relevant branches will be model as catchments in the spot and others aggregated at the next cut point.
     Args:
         fileOut (str): Path of the .out file created by SWMM after running the model with the flowrate timeseries of the pipes
-        mainPath (pd.DataFrame): links in the main path
+        mainPath (pd.DataFrame): links in the main path. Index is the order of the pipe.
         links (pd.DataFrame): All the links of the network
         trunk (bool): Whether the path is the trunk of the network or not.
+        isRelative (bool): Whether the selection of the relevant branches is done relative to the flow of the trunk at the joint point or not.
     Returns:
         tuple[pd.DataFrame,pd.DataFrame,pd.DataFrame]: Connected pipes selected as relevant branches. Index is the name of the discharging pipe, columns are outnode and trunk pipe.
                                             Timeseries of the pipes selected as catchments in columns index is datetime. For istrunk, these are only the not relevant, in other case it is all.
@@ -149,7 +156,11 @@ def selectBranches(fileOut:str, mainPath:pd.DataFrame,links:pd.DataFrame,isTrunk
     """    
     pipesConnected = getPipesConnectedToPath(mainPath, links) #Gets the pipes connected to the path
     
-    tsDFCatchments, relevantBranchCon, pipesCatchments = selectRelevantBranches(fileOut, isTrunk, pipesConnected)
+    if isRelative:
+        tsDFCatchments, relevantBranchCon, pipesCatchments = selectRelevantBranches(fileOut, isTrunk, pipesConnected)
+    else:
+        lastPipe = mainPath.iloc[-1].name
+        tsDFCatchments, relevantBranchCon, pipesCatchments = selectRelevantBranches(fileOut, isTrunk, pipesConnected, lastPipe)
 
     return relevantBranchCon, tsDFCatchments, pipesCatchments 
 
@@ -343,7 +354,7 @@ def modelPath(pathDF:pd.DataFrame, isTrunk:bool, links:pd.DataFrame, networkLook
                                                     List of tank series models representing the path.
                                                     List of catchments models representing the path.
     """    
-    relevantBranches, tsPipeCatchments, pipesCatchments = selectBranches(outfile,pathDF,links,isTrunk) 
+    relevantBranches, tsPipeCatchments, pipesCatchments = selectBranches(outfile,pathDF,links,isTrunk,False) 
 
     #Gets the break points and divides the path in various sections (dfs)  
     linksToBreak = getBreakPoints(pathDF, relevantBranches, nodeMeasurementFlow)
