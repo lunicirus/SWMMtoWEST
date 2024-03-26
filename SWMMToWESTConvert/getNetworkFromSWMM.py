@@ -40,26 +40,20 @@ def getsNetwork(networkFile:str)-> tuple[dict,str]:
 
     return nElements, outfile
 
-def getNodesLeaves(model:swmmio.Model, links:pd.DataFrame)->pd.Series:
+def getNodesLeaves(links:pd.DataFrame)->list[str]:
     """
         Returns the leaves of the network that are not outlets. Leaves are nodes that do not have pipes connected upstream.
     Args:
-        model (swmmio.Model): instanciated model of a network.
         links (pd.DataFrame): links of the entire network. Index is the link name and columns are their attributes.
     Returns:
-        pd.Series: names of the node leaves of the network
+        list[str]: names of the node leaves of the network
     """   
-    outNodes = links[SWWM_C.OUT_NODE].drop_duplicates()  #Get outlet nodes of pipes and cathments
-    inNodes = links[SWWM_C.IN_NODE].drop_duplicates()  #Get inlet nodes of pipes and cathments
-    nodes = model.nodes().index.to_series() #all nodes
+    inNodes = set(links[SWWM_C.IN_NODE].tolist()) #Convert to set to remove duplicates
+    outNodes = set(links[SWWM_C.OUT_NODE].tolist())
 
-    startPoints = nodes[~nodes.isin(outNodes.tolist())] #Get only nodes that are not outlets 
+    leaves = list(inNodes-outNodes)
 
-    SPCleaned = startPoints[startPoints.isin(inNodes.tolist())] #Removes nodes that are not connected to the network
-    
-    print("Number of nodes ", nodes.shape[0],", outlets ", outNodes.shape[0], ", startPoints ",startPoints.shape[0], ", and after cleaned ",SPCleaned.shape[0])
-
-    return SPCleaned
+    return leaves
 
 def getWaterDirectFlows(model:swmmio.Model)->tuple[pd.DataFrame,pd.DataFrame]:
     """
@@ -114,14 +108,11 @@ def getSimulationResultsFile(networkFile:str)-> str:
         Looks for the simulation results file of the inp file passed as parameter
     Args:
         networkFile (str): path of the inp of the network
-
     Raises:
         FileNotFoundError: if there is no simulation results file with the same name as the inp
-
     Returns:
         str: path of the simulation results file 
     """    
-
     fileName, extension = os.path.splitext(networkFile)
     outfile = f"{fileName}.out"
     if not os.path.exists(outfile):
