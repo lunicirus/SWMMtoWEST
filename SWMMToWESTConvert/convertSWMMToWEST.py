@@ -9,30 +9,49 @@ import SWMMToWESTConvert.SWMM_InpConstants as SWMM_C
 VISCO = 1.0035*(10**-6)*60*60*24 #m2/d
 GRAVITY = 9.81*(60*60*24)**2  #m/d2 
 
+FLOW_PER_PERSON = 0.4  #m3/d as in WEST
 
-FLOW_PER_PERSON = 0.4  #m3/d as in WEST. In SWMM units are m3/s 
+class ConvertionException(Exception):
+    pass
 
-#Aproximation using
-#Webber, N.B. (1971) Fluid Mechanics for Civil Engineers. Chapman & Hall
-#Result is in ft and then converted to meters
-def convertManningToM(manning):
 
+def convertManningToM(manning:float)->float:
+    """
+        Converts manning factor of pipe roughness to absolute roughness in meters. 
+        Aproximation using Webber, N.B. (1971) Fluid Mechanics for Civil Engineers. Chapman & Hall.
+        The approximation gives ft which are then converted to meters.
+    Args:
+        manning (float): Manning factor of pipe roughness
+    Returns:
+        float: Absolute roughness in meters
+    """    
     m = (manning*26)**6/3.28 # m
 
     return m
 
-#Converts the m3/s of SWMM to m3/d of WEST and divides per the flow per person constant to get the number of people
-def convertMeanSWMMFlowToNPeopleWEST(averageDWF):
-
+def convertMeanSWMMFlowToNPeopleWEST(averageDWF:float)->int:
+    """
+        Converts an mean dry weather flow in m3/s to get the equivalent number of people, using a fix flow per person in m3/d.
+        In SWMM units are m3/s, and in WEST are in m3/d.
+    Args:
+        averageDWF (float): mean dry weather flow in m3/s
+    Returns:
+        int: number of people equivalent to the averageDWF.
+    """    
     averageM3d = averageDWF * 86400 #SWMM 'average' is in m3/s 
     npeople = math.ceil(averageM3d / FLOW_PER_PERSON) # flow per person is in m3/d as it is west
 
     return npeople
 
-#Removes the first day of the ts as it considers the stabilisation period of the flow modeling
-#With the rest of the time series, calculates the average flow per hour of the day and normalises it using the ts total average flow 
-def convertTimeSeriesIntoDWF(ts):
-
+def convertTimeSeriesIntoDWF(ts:'pd.Series')->tuple[list[str],float]:
+    """
+        Calculates the average flow per hour of the day and normalises it using the ts total average flow.
+        Discarts the first day of the ts from the calculation, as it considers the stabilisation period of the flow modeling
+    Args:
+        ts (pd.Series): Time series of flows in order (i.e., the first day starts at hour 0 and finises at hour 23).
+    Returns:
+        tuple[list[str],float]: _description_
+    """    
     initialDate = ts.index[0]
     initialDateEvaluation = initialDate + timedelta(days=1) #it assumes that flow gets stable after one day!!
         
@@ -41,7 +60,7 @@ def convertTimeSeriesIntoDWF(ts):
     totalMean = dryWeather.mean()
     hourly_pattern = dryWeather.groupby(dryWeather.index.hour).mean()
     
-    assert list(hourly_pattern.index) == list(range(24)) #assumess that the TS is in order (starts in hour 0 and finish in 23)
+    assert list(hourly_pattern.index) == list(range(24)) #assumess that the TS is in order 
         
     normalized_HP = hourly_pattern / totalMean
     NHP_stringList = list(map(str, normalized_HP))
@@ -262,12 +281,16 @@ def getPathElements(dfs:list['pd.DataFrame'],elements:'pd.DataFrame', initialEle
     
     for df in dfs:  #Elements are in order from upstream to downstream
 
-        df = df[df[SWMM_C.LEN].notna() & (df[SWMM_C.LEN] != 0)].copy() #Removes elements with length zero (pumps, orifices or weirs) 
-        mostCommonShape = df[SWMM_C.SHAPE].value_counts().idxmax()
-        name = df.iloc[0,0] + " - " + df.iloc[-1,0]
+        dfClean = df[df[SWMM_C.LEN].notna() & (df[SWMM_C.LEN] != 0)].copy() #Removes elements with length zero (pumps, orifices or weirs)
+         
+        if dfClean.empty:
+            raise 
+
+        mostCommonShape = dfClean[SWMM_C.SHAPE].value_counts().idxmax()
+        name = dfClean.iloc[0,0] + " - " + dfClean.iloc[-1,0]
         
         #Creates and adds the pipe section to the list
-        sewerSect, n = createSewerWEST(df,name,mostCommonShape,tankIndex) 
+        sewerSect, n = createSewerWEST(dfClean,name,mostCommonShape,tankIndex) 
         pipesSection.append(sewerSect)
         tankIndex += n
                 
@@ -279,7 +302,7 @@ def getPathElements(dfs:list['pd.DataFrame'],elements:'pd.DataFrame', initialEle
             firstSection = False
          
         #Creates and adds a catchment and/or a dwf to their list if they are connected to the end part of the sewer section
-        pipeEvaluated = df.iloc[-1][SWMM_C.NAME]
+        pipeEvaluated = dfClean.iloc[-1][SWMM_C.NAME]
         if pipeEvaluated in elements.index:
             element = elements.loc[pipeEvaluated].copy()
             catchments = createCatchmentsFromFlowElement(element, timePatterns, tSDischarging, catchments, name)

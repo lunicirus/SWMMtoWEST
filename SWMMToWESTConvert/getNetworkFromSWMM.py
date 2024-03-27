@@ -23,7 +23,7 @@ def getsNetwork(networkFile:str)-> tuple[dict,str]:
     outfile = getSimulationResultsFile(networkFile) # gets the .out file 
     
     links = getLinksWithSlope(model)  # Links
-    leaves = getNodesLeaves(model, links) # Get nodes that dont have another pipe connected upstream and are not outlets
+    leaves = getNodesLeaves(links) # Get nodes that dont have another pipe connected upstream and are not outlets
     subCatchments = getCatchments(model) #Subcatchments
     FlowDWFs = getFlowDWFs(model)#Only flow Dry Weather Flows
     patterns = getHourlyPatterns(networkFile) #Time patterns (type dict) 
