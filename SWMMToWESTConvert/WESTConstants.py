@@ -43,3 +43,31 @@ XML_DWF_CUSTOMFLOWPATTERN = '.DWF.CustomFlow(H' #Associated to a catchment in WE
 # XML_SEWER_RESUSPENN = '.n_resuspension' 
 
 
+XML_MODEL_PROP_NAME = 'InstanceDisplayName'
+
+#Elements of the XML
+XML_QUANTIY = 'Quantity'
+XML_LINK = 'Link'
+
+#Values used for the properties
+XML_PROPS = 'Props'
+XML_PROP = 'Prop'
+XML_NAME = 'Name'
+XML_VAL = 'Value'
+
+#Properties of links
+XML_FROM = 'From'
+XML_TO = 'To'
+XML_TYPE = 'Type'
+XML_DATA = 'Data'
+
+#Utils for the links
+XML_SUBMOD = 'sub_models'
+XML_INTERFACE_OUT = '.interface.Outflow'
+XML_INTERFACE_IN = '.interface.Inflow'
+XML_TYPEVAL_LINK = 'Connect'
+XML_CONN_TYPE = 'ConnectionType'
+XML_CONN_NAME = 'ConnectionName'
+XML_WATERLINE = 'WaterLine'
+
+XML_QUOT = '&quot;'
