@@ -50,7 +50,7 @@ def convertTimeSeriesIntoDWF(ts:'pd.Series')->tuple[list[str],float]:
     Args:
         ts (pd.Series): Time series of flows in order (i.e., the first day starts at hour 0 and finises at hour 23).
     Returns:
-        tuple[list[str],float]: _description_
+        tuple[list[str],float]: _description_ TODO
     """    
     initialDate = ts.index[0]
     initialDateEvaluation = initialDate + timedelta(days=1) #it assumes that flow gets stable after one day!!
@@ -101,10 +101,19 @@ def calculateSewerValues(group,shapeType: str):
     
     return areaTank, Volmax, k, n
 
-#assigns the properties to the sewer section 
-def createSewerWEST(df,name,shapeType,tankIndex):
-    
-    areaTank, Volmax, k, n = calculateSewerValues(df,shapeType)
+def createSewerWEST(pipeSection:'pd.DataFrame',name:str,shapeType:str,tankIndex:int)-> tuple[dict,int]:
+    """
+        Creates a dictionary with all the required attributes of a sewer section in WEST. 
+        A sewer in WEST is represented with various tank in series mmodels with the same characterisitcs.
+    Args:
+        pipeSection (pd.DataFrame): Characteristics of the sewer section.
+        name (str): Name of the sewer section.
+        shapeType (str): Shape of the sewer section e.g. circular, rectangular.
+        tankIndex (int): Initial tank series number to be used for the sewer section. E.g. if the entired model already has 20 tank in series, this should be 21.
+    Returns:
+        tuple[dict,int]: dictionary representing the sewer section in WEST. The number of tank in series in the sewer section.
+    """    
+    areaTank, Volmax, k, n = calculateSewerValues(pipeSection,shapeType)
         
     pipe = {}
     pipe[STW_C.NAME] = name
@@ -115,10 +124,19 @@ def createSewerWEST(df,name,shapeType,tankIndex):
     
     return pipe, n
 
-#Cathcments are named as the name the pipe section connected to 
-#Converst flow and area to the values from SWMM to the units used in WEST
-def createCatchmentWEST(name, element, timePatterns, isEnd=True):
 
+def createCatchmentWEST(name:str, element:dict, timePatterns:dict, isEnd:bool=True)->dict:
+    """
+        Creates a dictionary with all the required attributes of a Catchment model in WEST. 
+        Converst flow and area values from SWMM to the attributes and units used in WEST.
+    Args:
+        name (str): Name of the catchment.
+        element (dict): Values from SWMM to be used or converted to create the catchment. #TODO check the type
+        timePatterns (dict): All time patterns to be used in the aggregated model. #TODO check the type
+        isEnd (bool, optional): True if the catchment should be placed at the end of the pipe section, False otherwise. Defaults to True.
+    Returns:
+        dict: dictionary representing a catchment in WEST.
+    """    
     catchment = {}
     catchment[STW_C.NAME] = name
     
@@ -126,7 +144,7 @@ def createCatchmentWEST(name, element, timePatterns, isEnd=True):
     catchment[STW_C.AREA] = element[SWMM_C.AREA] * 10000 #converts from ha to m2
     
     #Attributes from DWF----------------------------------------
-    averageDWF = element[SWMM_C.INFLOW_MEAN]
+    averageDWF = element[SWMM_C.INFLOW_MEAN] #m3/s
     timePatternDWF = element[SWMM_C.INFLOW_PATTERNS]
     
     if (not math.isnan(averageDWF)) & (averageDWF != 0):
@@ -222,7 +240,7 @@ def getPathElementsDividingByDiam(dfs,elements, initialElements,timePatterns,tSC
                 
                 #Creates and adds a catchment and/or and dwf to their list if they are connected at the beggining of the path
                 if firstSection and (initialElements is not None):
-                    catchment = createCatchmentWEST(name, initialElements,timePatterns,False)
+                    catchment = createCatchmentWEST(name, initialElements,timePatterns,False) #Cathcments are named as the name the pipe section connected to
                     catchments.append(catchment)
                     
                     firstSection = False
@@ -245,7 +263,7 @@ def getPathElementsDividingByDiam(dfs,elements, initialElements,timePatterns,tSC
                     element.fillna(0,inplace=True)
                
                     if ~((element == 0.0) | element.isna()).all():
-                        catchment = createCatchmentWEST(name, element, timePatterns)
+                        catchment = createCatchmentWEST(name, element, timePatterns) #Cathcments are named as the name the pipe section connected to
                         catchments.append(catchment)
     
             
@@ -296,7 +314,7 @@ def getPathElements(dfs:list['pd.DataFrame'],elements:'pd.DataFrame', initialEle
                 
         #Creates and adds a catchment and/or and dwf to their list if they are connected at the beggining of the path
         if firstSection and initialElements:
-            catchment = createCatchmentWEST(name, initialElements,timePatterns,False)
+            catchment = createCatchmentWEST(name, initialElements,timePatterns,False) #Cathcments are named as the name the pipe section connected to
             catchments.append(catchment)
             
             firstSection = False
@@ -348,7 +366,7 @@ def createCatchmentsFromFlowElement(element:'pd.Serie', timePatterns:dict[list],
                 
          #if any of the others values are different from zero or null then it creates a catchment object      
     if ~((element == 0.0) | element.isna()).all():
-        catchment = createCatchmentWEST(pipeSectionName, element, timePatterns)
+        catchment = createCatchmentWEST(pipeSectionName, element, timePatterns) #Cathcments are named as the name the pipe section connected to
         catchments.append(catchment)
 
     return catchments
