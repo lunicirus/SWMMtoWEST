@@ -23,6 +23,7 @@ DIAM = 'PipeDiameter'
 AREA = 'AreaCatchment'
 AREATANK = 'AreaTank'
 DF_BASELINE = 'DirectFBaseline'
+NAME_CATCH = 'CatchmentName'
 
 CONNECTED_PIPE_SUFFIX = '_dischargingPipe'
 TRUNK_PIPE_SUFFIX = '_trunkPipe'
