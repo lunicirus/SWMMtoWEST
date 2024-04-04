@@ -33,7 +33,7 @@ BREAK_POINT = "BreakPoint"
 PATH = 'PathTankInSeries'
 WCATCHMENTS = 'WESTCatchments' 
 
-PERC_LIM_TO_BRANCH = 0.1 # Percentage from the trunk flow for a connecting pipe to be considered as a relevant branch
+PERC_LIM_TO_BRANCH = 0.2 # Percentage from the trunk flow for a connecting pipe to be considered as a relevant branch
 
 # DIST_TO_LEAF = "DistanceToOriginLeaf"
 

@@ -386,7 +386,7 @@ def getTrunkModels(links:pd.DataFrame, networkLookNodes:pd.DataFrame, outfile:st
         idWRRF (str): Name in the .inp of the node representing the entrance of the WRRF.
         idTrunkIni (str,optional): Id name of the most upstream node of the trunk in the .inp. Defaults to None.
     Returns:
-        tuple[list[str],tuple[list,list]]: Names  of the connecting pipes to the trunk that were selected as branches to model in detail.
+        tuple[list[str],tuple[list,list]]: Names of the connecting pipes to the trunk that were selected as branches to model in detail.
         Models representing the trunk with the list of tank series models and a list of catchments models.
     """    
     print("-------------------------------Obtaining and modelling the Trunk -------------------------------------------------")

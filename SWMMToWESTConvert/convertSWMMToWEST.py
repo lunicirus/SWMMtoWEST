@@ -67,13 +67,21 @@ def convertTimeSeriesIntoDWF(ts:'pd.Series')->tuple[list[str],float]:
 
     return NHP_stringList, totalMean
 
-#Asumes RECT pipes have the same geom 2 than geom 1
-def calculateSewerValues(group,shapeType: str):
-    
-    length = group[SWMM_C.LEN].sum()  #m
-    diam = np.average(group[SWMM_C.DIAM], weights=group[SWMM_C.LEN]) #m
-    slope = np.average(group[STW_C.SLOPE], weights=group[SWMM_C.LEN])
-    roughness = np.average(group[SWMM_C.ROUG], weights=group[SWMM_C.LEN]) # manning       
+
+def calculateSewerValues(pipeSection:'pd.DataFrame',shapeType: str)->tuple[float,float,float,int]:
+    """
+        Calcutes the atributes of the tanks in series to represent the sewer section. Using Kalinin-Miljukov.
+        Asumes RECT pipes have the same geom 2 than geom 1 TODO
+    Args:
+        pipeSection (pd.DataFrame): Pipes in the pipe section. rows are pipes and columns the attributes.
+        shapeType (str): Shape of the pipe section e.g., circular, rect_closed.
+    Returns:
+        tuple[float,float,float,int]: Area of the tanks. Max volumen of the tanks. Retention time of one tank. Number of tanks.
+    """    
+    length = pipeSection[SWMM_C.LEN].sum()  #m
+    diam = np.average(pipeSection[SWMM_C.DIAM], weights=pipeSection[SWMM_C.LEN]) #m
+    slope = np.average(pipeSection[STW_C.SLOPE], weights=pipeSection[SWMM_C.LEN])
+    roughness = np.average(pipeSection[SWMM_C.ROUG], weights=pipeSection[SWMM_C.LEN]) # manning       
     roughness = convertManningToM(roughness)
     Lc = 0.4 * diam / slope   #m
     n1 = length/Lc  
@@ -124,7 +132,6 @@ def createSewerWEST(pipeSection:'pd.DataFrame',name:str,shapeType:str,tankIndex:
     
     return pipe, n
 
-
 def createCatchmentWEST(name:str, element:dict, timePatterns:dict, isEnd:bool=True)->dict:
     """
         Creates a dictionary with all the required attributes of a Catchment model in WEST. 
@@ -138,7 +145,7 @@ def createCatchmentWEST(name:str, element:dict, timePatterns:dict, isEnd:bool=Tr
         dict: dictionary representing a catchment in WEST.
     """    
     catchment = {}
-    catchment[STW_C.NAME] = name
+    catchment[STW_C.NAME_CATCH] = name
     
     #Attributes of catchments (equal to SWMM) ----------------------------
     catchment[STW_C.AREA] = element[SWMM_C.AREA] * 10000 #converts from ha to m2
@@ -182,7 +189,7 @@ def createInputWEST(name:str,input:str,tsInputs:'pd.DataFrame')->dict:
     npeople = None
     tPatternP= None
 
-    inputWEST[STW_C.NAME] = name + "[input]"
+    inputWEST[STW_C.NAME_CATCH] = name + "[input]"
 
     #Catchment attributes not used for representing an input -----------------
     inputWEST[STW_C.AREA] = 0
@@ -204,76 +211,6 @@ def createInputWEST(name:str,input:str,tsInputs:'pd.DataFrame')->dict:
     inputWEST[STW_C.END] = True
     
     return inputWEST
-
-#Each pipe section has the name as the initial and final node of the composing pipes 
-# it has the mean of the slopes of the composing pipes, the mean (and only) diameter of the group, and the total length 
-def getPathElementsDividingByDiam(dfs,elements, initialElements,timePatterns,tSConnectedPoints)->tuple[list[dict],list[dict]]:
-    
-    pipesSection = []
-    catchments= []
-    
-    tankIndex = 1
-    firstSection = True
-    
-    #Elements are in order from upstream to downstream
-    for df in dfs:
-        #Classifies consecutive pipes with the same diameter
-        groups = df.groupby((df[SWMM_C.DIAM] != df[SWMM_C.DIAM].shift()).cumsum())
-
-        for i, groupDiameter in groups:
-            
-            shapes = groupDiameter.groupby(SWMM_C.SHAPE,sort=False)
-            
-            length = groupDiameter[SWMM_C.LEN].sum()
-            if length == 0:
-                print("Pump, Orifice or Weir")
-                continue
-            
-            for shapeType, group  in shapes:
-
-                #print("pipe: ",group.iloc[0,0], " - ", group.iloc[-1,0])
-                
-                #Creates and adds the pipe section to the list
-                sewerSect, name, n = createSewerWEST(group,shapeType,tankIndex) 
-                pipesSection.append(sewerSect)
-                tankIndex += n
-                
-                #Creates and adds a catchment and/or and dwf to their list if they are connected at the beggining of the path
-                if firstSection and (initialElements is not None):
-                    catchment = createCatchmentWEST(name, initialElements,timePatterns,False) #Cathcments are named as the name the pipe section connected to
-                    catchments.append(catchment)
-                    
-                    firstSection = False
-                
-                #Creates and adds a catchment and/or a dwf to their list if they are connected to the end part of the sewer section
-                connectingPipe= group.iloc[-1,0]
-                if connectingPipe in elements.index:
-
-                    #check that the data is not empty or zero before creating a catchment
-                    element = elements.loc[connectingPipe].copy()
-                    tsInput = element[STW_C.MODELED_INPUT]
-
-                    #If the ts is not empty it creates an input object
-                    if tsInput is not None:
-                        input = createInputWEST(name, tsInput,tSConnectedPoints)
-                        catchments.append(input)
-
-                    #if any of the others values are different from zero or null then it creates a catchment object
-                    element.drop(labels=STW_C.MODELED_INPUT,inplace=True)
-                    element.fillna(0,inplace=True)
-               
-                    if ~((element == 0.0) | element.isna()).all():
-                        catchment = createCatchmentWEST(name, element, timePatterns) #Cathcments are named as the name the pipe section connected to
-                        catchments.append(catchment)
-    
-            
-    print("----------------------------")
-    print("Final number of pipe sections: ", len(pipesSection))
-    print("Final number of catchments: ", len(catchments))
-    print("Final number of tanks in series:", pipesSection[-1][STW_C.TANK_INDEXES][-1])
-                            
-    return pipesSection, catchments
-
 
 def getPathElements(dfs:list['pd.DataFrame'],elements:'pd.DataFrame', initialElements:dict,
                     timePatterns:dict[list],tSDischarging:'pd.DataFrame', firstPipe:str)->tuple[list[dict],list[dict]]:
@@ -370,3 +307,75 @@ def createCatchmentsFromFlowElement(element:'pd.Serie', timePatterns:dict[list],
         catchments.append(catchment)
 
     return catchments
+
+
+#------------------------------------------------Outdated--------------------------------------------------------
+
+#Each pipe section has the name as the initial and final node of the composing pipes 
+# it has the mean of the slopes of the composing pipes, the mean (and only) diameter of the group, and the total length 
+def getPathElementsDividingByDiam(dfs,elements, initialElements,timePatterns,tSConnectedPoints)->tuple[list[dict],list[dict]]:
+    
+    pipesSection = []
+    catchments= []
+    
+    tankIndex = 1
+    firstSection = True
+    
+    #Elements are in order from upstream to downstream
+    for df in dfs:
+        #Classifies consecutive pipes with the same diameter
+        groups = df.groupby((df[SWMM_C.DIAM] != df[SWMM_C.DIAM].shift()).cumsum())
+
+        for i, groupDiameter in groups:
+            
+            shapes = groupDiameter.groupby(SWMM_C.SHAPE,sort=False)
+            
+            length = groupDiameter[SWMM_C.LEN].sum()
+            if length == 0:
+                print("Pump, Orifice or Weir")
+                continue
+            
+            for shapeType, group  in shapes:
+
+                #print("pipe: ",group.iloc[0,0], " - ", group.iloc[-1,0])
+                
+                #Creates and adds the pipe section to the list
+                sewerSect, name, n = createSewerWEST(group,shapeType,tankIndex) 
+                pipesSection.append(sewerSect)
+                tankIndex += n
+                
+                #Creates and adds a catchment and/or and dwf to their list if they are connected at the beggining of the path
+                if firstSection and (initialElements is not None):
+                    catchment = createCatchmentWEST(name, initialElements,timePatterns,False) #Cathcments are named as the name the pipe section connected to
+                    catchments.append(catchment)
+                    
+                    firstSection = False
+                
+                #Creates and adds a catchment and/or a dwf to their list if they are connected to the end part of the sewer section
+                connectingPipe= group.iloc[-1,0]
+                if connectingPipe in elements.index:
+
+                    #check that the data is not empty or zero before creating a catchment
+                    element = elements.loc[connectingPipe].copy()
+                    tsInput = element[STW_C.MODELED_INPUT]
+
+                    #If the ts is not empty it creates an input object
+                    if tsInput is not None:
+                        input = createInputWEST(name, tsInput,tSConnectedPoints)
+                        catchments.append(input)
+
+                    #if any of the others values are different from zero or null then it creates a catchment object
+                    element.drop(labels=STW_C.MODELED_INPUT,inplace=True)
+                    element.fillna(0,inplace=True)
+               
+                    if ~((element == 0.0) | element.isna()).all():
+                        catchment = createCatchmentWEST(name, element, timePatterns) #Cathcments are named as the name the pipe section connected to
+                        catchments.append(catchment)
+    
+            
+    print("----------------------------")
+    print("Final number of pipe sections: ", len(pipesSection))
+    print("Final number of catchments: ", len(catchments))
+    print("Final number of tanks in series:", pipesSection[-1][STW_C.TANK_INDEXES][-1])
+                            
+    return pipesSection, catchments
