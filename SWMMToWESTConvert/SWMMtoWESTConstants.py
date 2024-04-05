@@ -20,10 +20,11 @@ TIMEPATTERN ='TimePattern'
 
 NAME = 'PipeName'
 DIAM = 'PipeDiameter'
-AREA = 'AreaCatchment'
 AREATANK = 'AreaTank'
-DF_BASELINE = 'DirectFBaseline'
+
 NAME_CATCH = 'CatchmentName'
+AREA = 'AreaCatchment'
+DF_BASELINE = 'DirectFBaseline'
 
 CONNECTED_PIPE_SUFFIX = '_dischargingPipe'
 TRUNK_PIPE_SUFFIX = '_trunkPipe'
@@ -38,3 +39,9 @@ PERC_LIM_TO_BRANCH = 0.2 # Percentage from the trunk flow for a connecting pipe 
 
 # DIST_TO_LEAF = "DistanceToOriginLeaf"
 
+LINK_NAME = 'LinkName'
+CONN_NAME = 'ConnectionName'
+ELE_NAME = 'ElementName'
+
+LINK_NAME_SUFFIX = 'Link'
+CONNECTION_NAME_SUFFIX = 'CustomOrthogonalLine'

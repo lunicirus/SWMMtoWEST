@@ -43,8 +43,8 @@ def createLinkXML(linkName:str, fromM:str, toM:str, lineName:str)->ET.Element:
         Create a new Link element for the Layout.xml 
     Args:
         linkName (str): Link name e.g. "Link997156"
-        fromM (str): Model origin e.g. ".Two_combiner7"
-        toM (str): Model destination e.g. ".Icon44"
+        fromM (str): Model origin e.g. "Two_combiner7"
+        toM (str): Model destination e.g. "Icon44"
         lineName (str): Line name e.g. "CustomOrthogonalLine31"
     Returns:
         ET.Element: Link element to be added to an XML
@@ -59,8 +59,8 @@ def createLinkXML(linkName:str, fromM:str, toM:str, lineName:str)->ET.Element:
     #     </Props>
     # </Link> 
 
-    fromVal = W_C.XML_SUBMOD + fromM + W_C.XML_INTERFACE_OUT
-    toVal = W_C.XML_SUBMOD + toM + W_C.XML_INTERFACE_IN
+    fromVal = W_C.XML_SUBMOD + "." +fromM + W_C.XML_INTERFACE_OUT
+    toVal = W_C.XML_SUBMOD + "." + toM + W_C.XML_INTERFACE_IN
     dataVal = W_C.XML_CONN_NAME + "=" + W_C.XML_QUOT + lineName + W_C.XML_QUOT + ' ' + W_C.XML_CONN_TYPE + "=" + W_C.XML_QUOT + W_C.XML_WATERLINE + W_C.XML_QUOT
 
     new_Link = ET.Element(W_C.XML_LINK, attrib={W_C.XML_NAME: linkName})
@@ -73,11 +73,29 @@ def createLinkXML(linkName:str, fromM:str, toM:str, lineName:str)->ET.Element:
     return new_Link
 
 def setModelClass(submodel:ET.Element,modelClass:str):
+    """_summary_
+
+    Args:
+        submodel (ET.Element): _description_
+        modelClass (str): _description_
+    """    
     #TODO documentation
 
     submodel.find("./Props/Prop[@Name='ClassName']").set('Value', modelClass) # Always the same class
 
 def getModelNames(submodel:ET.Element,typeNameSub:str):
+    """_summary_
+
+    Args:
+        submodel (ET.Element): _description_
+        typeNameSub (str): _description_
+
+    Raises:
+        Exception: _description_
+
+    Returns:
+        _type_: _description_
+    """    
     #TODO documentation 
 
     instName = submodel.find("./Props/Prop[@Name='InstanceName']").get('Value')
@@ -89,7 +107,7 @@ def getModelNames(submodel:ET.Element,typeNameSub:str):
         
     return iType, instName
 
-def createsOrModifyQuantity(property,instName,XMLval,quant_XMLelem,root:ET.Element):
+def createsOrModifyQuantity(property,instName,XMLval,quant_XMLelem:ET.Element,root:ET.Element):
 
     #Get the values to modify
     val = str(property) 
@@ -228,14 +246,116 @@ def modifyConnectorModel(root:ET.Element, quantities:ET.Element, submodel:ET.Ele
             velVal.find("./Props/Prop[@Name='Value']").set('Value', str(vel))
    
     return root, quantities
+
 #-------------Create Links ----------------------------------------------
-def createLinks(root:ET.Element,namesDict:dict[str],propsCath:list[dict]):
+def createCatchmentLinksXML(linksXML:ET.Element,catchmentNames:dict[str],connectorNames:dict[str],combNames:dict[str],prevElement:str)->ET.Element:
+    """
+        Creates the links between a catchment and another element downstream. 
+        If there is a previous element, the catchemnt is connected to it. Then, the catchment is connected to a connector (model) and the connector to a combiner.
+    Args:
+        linksXML (ET.Element): Links element of the WEST's .Layout.xml file.
+        catchmentNames (dict[str]): Name of the cathment element in the xml, and names to be set for the link and connection associated. 
+        connectorNames (dict[str]): Name of the connector model element in the xml, and names to be set for the link and connection associated. 
+        combNames (dict[str]): Name of the combiner element in the xml, and names to be set for the link and connection associated. 
+        prevElement (str): Name of the upstream element at which the catchment would be connected.
+        TODO return doc
+    """
+    if prevElement is not None:
+        previousToCatch = createLinkXML(catchmentNames[STW_C.LINK_NAME], prevElement,catchmentNames[STW_C.ELE_NAME],
+                    catchmentNames[STW_C.CONN_NAME]) #Previous element to catchment
+        linksXML.append(previousToCatch)
+        
+    catchToConn = createLinkXML(connectorNames[STW_C.LINK_NAME],catchmentNames[STW_C.ELE_NAME],connectorNames[STW_C.ELE_NAME],
+                  connectorNames[STW_C.CONN_NAME]) #Cathment to connector
+    ConnToComb = createLinkXML(combNames[STW_C.LINK_NAME],connectorNames[STW_C.ELE_NAME],combNames[STW_C.ELE_NAME],
+                  combNames[STW_C.CONN_NAME]) #Connector to combiner
+    
+    linksXML.append(catchToConn)
+    linksXML.append(ConnToComb)
 
-        if catchM[STW_C.END]:
+    return linksXML
 
 
+def createLinks(root:ET.Element,namesDict:dict[str],propsCath:list[dict],propsSewer:list[dict]):
+
+    linksXML = root.find('.//Links')
+
+    catchmenti = propsCath.pop(0)
+    linki = 1
+    lastElement = None
+
+    for p in propsSewer:
+
+        seweriName = p[STW_C.NAME]
+        catchiName = catchmenti[STW_C.NAME_CATCH]
+        tanksIndexes = p[STW_C.TANK_INDEXES]
+        firstTankName = namesDict[W_C.XML_SEWER_NAMES + str(tanksIndexes[0])]
+
+        if catchiName == seweriName: #if the catchment has the name of the sewer section 
+
+            catchiModelName = namesDict[catchiName]
+            #TODO get the other two elements!
+
+            #Connects the catchment if it should go before the sewer section
+            if not catchmenti[STW_C.END]:
+
+                linksXML, linki, lastElement = connectCatchment(linksXML, linki, lastElement, catchiModelName, connName, combName)
+
+            #Connects the tanks of the sewer section 
+            linksXML = connectPipeSection(namesDict, linksXML, linki, lastElement, tanksIndexes)
+
+            #Connects the catchment if it should go after the sewer section 
+            if catchmenti[STW_C.END]:
+
+                linksXML, linki, lastElement = connectCatchment(linksXML, linki, lastElement, catchiModelName, connName, combName)
+
+        else:
+            linksXML = connectPipeSection(namesDict, linksXML, linki, lastElement, tanksIndexes)
+
+
+    #TODO !! add input catchment
 
     return root
+
+def connectCatchment(linksXML, linki, lastElement, catchiModelName, connName, combName):
+
+    nameL, nameC, linki = getLinkAndConnectionNames(linki)
+    catchmentN = {STW_C.ELE_NAME:catchiModelName,STW_C.LINK_NAME:nameL,STW_C.CONN_NAME:nameC}
+
+    nameL, nameC, linki = getLinkAndConnectionNames(linki)
+    connN = {STW_C.ELE_NAME:connName,STW_C.LINK_NAME:nameL,STW_C.CONN_NAME:nameC}
+                
+    nameL, nameC, linki = getLinkAndConnectionNames(linki)
+    combN = {STW_C.ELE_NAME:combName,STW_C.LINK_NAME:nameL,STW_C.CONN_NAME:nameC}
+
+    linksXML = createCatchmentLinksXML(linksXML,catchmentN,connN,combN,lastElement)
+    
+    return linksXML,linki,combName
+
+def connectPipeSection(namesDict, linksXML, linki, lastElement, tanksIndexes):
+
+    for t in tanksIndexes:
+        tankName = namesDict[W_C.XML_SEWER_NAMES + str(t)]
+        linksXML, linki, lastElement = addLink(linksXML, linki, lastElement, tankName)
+
+    return linksXML
+
+def addLink(linksXML:ET.Element, linki:int, fromElement:str, toElement:str):
+
+    nameL, nameC, linki = getLinkAndConnectionNames(linki)
+
+    linkAux = createLinkXML(nameL,fromElement,toElement,nameC)
+    linksXML.append(linkAux)
+
+    return linksXML,linki,toElement
+
+def getLinkAndConnectionNames(linki:int):
+
+    nameL = STW_C.LINK_NAME_SUFFIX + str(linki)
+    nameC = STW_C.CONNECTION_NAME_SUFFIX + str(linki)
+    linki += 1
+
+    return nameL,nameC,linki
 
 def setPropertiesAndClasses(xml:str,xmlOut:str,
                             sewerClass:str,propsSewer:str,
@@ -273,7 +393,7 @@ def setPropertiesAndClasses(xml:str,xmlOut:str,
 
     
     #Create the links
-    createLinks(root,namesDict,propsCath)
+    createLinks(root,namesDict,propsCath,propsSewer)
            
     print("The number of sewers found were ", nSewers, ", catchments ", nCatchments, " and connectors ", nConnectors)
     

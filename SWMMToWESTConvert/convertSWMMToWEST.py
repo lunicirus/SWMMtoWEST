@@ -205,7 +205,6 @@ def createInputWEST(name:str,input:str,tsInputs:'pd.DataFrame')->dict:
     inputWEST[STW_C.N_PEOPLE] = npeople
     inputWEST[STW_C.TIMEPATTERN] = tPatternP
     
-    
     #Aux attributes ------------------------------
     inputWEST[STW_C.FLOWRPERPERSON] = FLOW_PER_PERSON
     inputWEST[STW_C.END] = True
