@@ -3,13 +3,13 @@
 SEWER = 'Sewer'
 CATCHMENT = 'Catchment'
 CONNECTOR = 'Connector_info'
-
+COMBINER = 'Two combiner'
 
 #Start of the models' names
 XML_SEWER_NAMES =  'Sew_'
 XML_CATCH_NAMES = 'Catchment_'
 XML_CONN_NAMES = 'Connector_info_'
-
+XML_COMB_NAMES = 'Well_'
 
 #Names of the models' attributes
 XML_AREA_SEWER = '.A'

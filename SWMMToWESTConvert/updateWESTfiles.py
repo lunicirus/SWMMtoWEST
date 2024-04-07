@@ -83,29 +83,39 @@ def setModelClass(submodel:ET.Element,modelClass:str):
 
     submodel.find("./Props/Prop[@Name='ClassName']").set('Value', modelClass) # Always the same class
 
-def getModelNames(submodel:ET.Element,typeNameSub:str):
-    """_summary_
-
+def getModelNames(submodel:ET.Element,nameSufix:str)->tuple[int,str]:
+    """
+        Gets the InstanceName of a model and its name index.
     Args:
-        submodel (ET.Element): _description_
-        typeNameSub (str): _description_
-
+        submodel (ET.Element): The XML representing a submodel in the WEST layout.xml file
+        nameSufix (str): Name sufix of the model depending on its type e.g. for tank in series it is 'SEW_'.
     Raises:
-        Exception: _description_
-
+        Exception: If the name does not follow the expected pattern e.g. <<nameSufix>>_<<nameIndex>>
     Returns:
-        _type_: _description_
+        tuple[int,str]: Name index of the model. Instance name of the model.
     """    
-    #TODO documentation 
-
     instName = submodel.find("./Props/Prop[@Name='InstanceName']").get('Value')
     
-    try:
-        iType = int(re.split("^" + typeNameSub, instName)[1])
-    except Exception as e:
-        raise Exception("The InstanceName of the sewer (XML) does not follow the expected naming convention (" + str(e) + ")")
+    iType = getModelNameIndex(nameSufix, instName)
         
     return iType, instName
+
+def getModelNameIndex(nameSufix:str, instName:str)->int:
+    """
+        Gets the name index of the model.
+    Args:
+        nameSufix (str): Name sufix of the model depending on its type e.g. for tank in series it is 'SEW_'.
+        instName (str): Instance name of the model.
+    Raises:
+        Exception: If the name does not follow the expected pattern e.g. <<nameSufix>>_<<nameIndex>>
+    Returns:
+        int: Name index of the model.
+    """    
+    try:
+        iType = int(re.split("^" + nameSufix, instName)[1])
+    except Exception as e:
+        raise Exception("The InstanceName of the sewer (XML) does not follow the expected naming convention (" + str(e) + ")")
+    return iType
 
 def createsOrModifyQuantity(property,instName,XMLval,quant_XMLelem:ET.Element,root:ET.Element):
 
@@ -288,18 +298,26 @@ def createLinks(root:ET.Element,namesDict:dict[str],propsCath:list[dict],propsSe
 
         seweriName = p[STW_C.NAME]
         catchiName = catchmenti[STW_C.NAME_CATCH]
+        iCatchment = getModelNameIndex(W_C.XML_SEWER_NAMES, catchiName)
+            
         tanksIndexes = p[STW_C.TANK_INDEXES]
         firstTankName = namesDict[W_C.XML_SEWER_NAMES + str(tanksIndexes[0])]
 
         if catchiName == seweriName: #if the catchment has the name of the sewer section 
 
             catchiModelName = namesDict[catchiName]
+
+            
+            connModelName = namesDict[catchiName]
+            combModelName = namesDict[catchiName]
+
+
             #TODO get the other two elements!
 
             #Connects the catchment if it should go before the sewer section
             if not catchmenti[STW_C.END]:
 
-                linksXML, linki, lastElement = connectCatchment(linksXML, linki, lastElement, catchiModelName, connName, combName)
+                linksXML, linki, lastElement = connectCatchment(linksXML, linki, lastElement, catchiModelName, connModelName, combModelName)
 
             #Connects the tanks of the sewer section 
             linksXML = connectPipeSection(namesDict, linksXML, linki, lastElement, tanksIndexes)
@@ -307,8 +325,10 @@ def createLinks(root:ET.Element,namesDict:dict[str],propsCath:list[dict],propsSe
             #Connects the catchment if it should go after the sewer section 
             if catchmenti[STW_C.END]:
 
-                linksXML, linki, lastElement = connectCatchment(linksXML, linki, lastElement, catchiModelName, connName, combName)
-
+                linksXML, linki, lastElement = connectCatchment(linksXML, linki, lastElement, catchiModelName, connModelName, combModelName)
+            
+            #gets the next catchment
+            catchmenti = propsCath.pop(0)
         else:
             linksXML = connectPipeSection(namesDict, linksXML, linki, lastElement, tanksIndexes)
 
@@ -317,7 +337,7 @@ def createLinks(root:ET.Element,namesDict:dict[str],propsCath:list[dict],propsSe
 
     return root
 
-def connectCatchment(linksXML, linki, lastElement, catchiModelName, connName, combName):
+def connectCatchment(linksXML:ET.Element, linki:int, lastElement:str, catchiModelName:str, connName:str, combName:str):
 
     nameL, nameC, linki = getLinkAndConnectionNames(linki)
     catchmentN = {STW_C.ELE_NAME:catchiModelName,STW_C.LINK_NAME:nameL,STW_C.CONN_NAME:nameC}
@@ -332,7 +352,7 @@ def connectCatchment(linksXML, linki, lastElement, catchiModelName, connName, co
     
     return linksXML,linki,combName
 
-def connectPipeSection(namesDict, linksXML, linki, lastElement, tanksIndexes):
+def connectPipeSection(namesDict:dict[str], linksXML:ET.Element, linki:int, lastElement:str, tanksIndexes:list[int]):
 
     for t in tanksIndexes:
         tankName = namesDict[W_C.XML_SEWER_NAMES + str(t)]
@@ -371,7 +391,7 @@ def setPropertiesAndClasses(xml:str,xmlOut:str,
     quantities = root.find('.//Quantities')
 
     print("Number of submodels found ",len(submodels))
-    nSewers, nCatchments, nConnectors = 0,0,0 #count of sewers and catchments models found in the XML 
+    nSewers, nCatchments, nConnectors, nCombiners = 0,0,0,0 #count of sewers and catchments models found in the XML 
     namesDict = {}
     
     for submodel  in submodels: # Iterate over the SubModels
@@ -390,6 +410,11 @@ def setPropertiesAndClasses(xml:str,xmlOut:str,
             root, quantities, instName = modifyConnectorModel(root, quantities, submodel, connClass, connectorProps[1],connectorProps[0])
             namesDict[instName] = submodel.attrib["Name"]
             nConnectors += 1
+
+        elif submodel.find("./Props/Prop[@Name='Desc']").get('Value') ==  W_C.COMBINER: #if the model is a combiner
+            #root, quantities, instName = modifyConnectorModel(root, quantities, submodel, connClass, connectorProps[1],connectorProps[0])
+            namesDict[instName] = submodel.attrib["Name"]
+            nCombiners += 1
 
     
     #Create the links
