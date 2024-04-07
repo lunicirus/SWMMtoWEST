@@ -412,7 +412,7 @@ def setPropertiesAndClasses(xml:str,xmlOut:str,
             nConnectors += 1
 
         elif submodel.find("./Props/Prop[@Name='Desc']").get('Value') ==  W_C.COMBINER: #if the model is a combiner
-            #root, quantities, instName = modifyConnectorModel(root, quantities, submodel, connClass, connectorProps[1],connectorProps[0])
+            #TODO root, quantities, instName = modifyConnectorModel(root, quantities, submodel, connClass, connectorProps[1],connectorProps[0])
             namesDict[instName] = submodel.attrib["Name"]
             nCombiners += 1
 
