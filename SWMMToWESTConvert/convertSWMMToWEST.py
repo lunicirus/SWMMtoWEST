@@ -189,7 +189,7 @@ def createInputWEST(name:str,input:str,tsInputs:'pd.DataFrame')->dict:
     npeople = None
     tPatternP= None
 
-    inputWEST[STW_C.NAME_CATCH] = name + "[input]"
+    inputWEST[STW_C.NAME_CATCH] = name + STW_C.INPUT_CATCHMENT
 
     #Catchment attributes not used for representing an input -----------------
     inputWEST[STW_C.AREA] = 0

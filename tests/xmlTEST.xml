@@ -56,7 +56,7 @@
 <SubModel Name="Icon2">
 <Props>
 <Prop Name="InstanceName" Value="Catchment_2"/>
-<Prop Name="InstanceDisplayName" Value="DOM_7925 - DOM_602606[input](After)"/>
+<Prop Name="InstanceDisplayName" Value="DOM_7925 - DOM_602606[input]"/>
 <Prop Name="ClassName" Value="Catchment_NoRetention_IndirectStormwater"/>
 <Prop Name="Desc" Value="Catchment"/>
 <Prop Name="Unit" Value=""/>

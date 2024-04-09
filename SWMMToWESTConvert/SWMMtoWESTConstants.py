@@ -25,6 +25,7 @@ AREATANK = 'AreaTank'
 NAME_CATCH = 'CatchmentName'
 AREA = 'AreaCatchment'
 DF_BASELINE = 'DirectFBaseline'
+INPUT_CATCHMENT = "[input]"
 
 CONNECTED_PIPE_SUFFIX = '_dischargingPipe'
 TRUNK_PIPE_SUFFIX = '_trunkPipe'
@@ -42,6 +43,10 @@ PERC_LIM_TO_BRANCH = 0.2 # Percentage from the trunk flow for a connecting pipe 
 LINK_NAME = 'LinkName'
 CONN_NAME = 'ConnectionName'
 ELE_NAME = 'ElementName'
+CATCH_MOD_NAME= 'Catchment model name'
+CONN_MOD_NAME= 'Connection model name'
+COMB_MOD_NAME= 'Two Combiner model name'
+
 
 LINK_NAME_SUFFIX = 'Link'
 CONNECTION_NAME_SUFFIX = 'CustomOrthogonalLine'

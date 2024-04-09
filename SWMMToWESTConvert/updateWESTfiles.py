@@ -102,7 +102,7 @@ def getModelNames(submodel:ET.Element,nameSufix:str)->tuple[int,str]:
 
 def getModelNameIndex(nameSufix:str, instName:str)->int:
     """
-        Gets the name index of the model.
+        Gets the name index of the model. Does not apply to CatchmentModels with suffix [input] (TODO change this!).
     Args:
         nameSufix (str): Name sufix of the model depending on its type e.g. for tank in series it is 'SEW_'.
         instName (str): Instance name of the model.
@@ -209,7 +209,7 @@ def modifyCatchmentModel(root:ET.Element, quantities:ET.Element, submodel:ET.Ele
             
         i+=1
             
-    return root, quantities
+    return root, quantities,instName
 
 def modifyConnectorModel(root:ET.Element, quantities:ET.Element, submodel:ET.Element, connClass:str, velTSS, velMin)->tuple[ET.Element,ET.Element,str]:
     """
@@ -255,7 +255,25 @@ def modifyConnectorModel(root:ET.Element, quantities:ET.Element, submodel:ET.Ele
             velVal= root.find(".//Quantities/Quantity[@Name='"+ velName +"']")
             velVal.find("./Props/Prop[@Name='Value']").set('Value', str(vel))
    
-    return root, quantities
+    return root, quantities, instName
+
+def modifyCombinerModel(root:ET.Element, submodel:ET.Element, combClass:str)->tuple[ET.Element,ET.Element,str]:
+    """
+        Modifies the class of an existent model type TWO COMBINER in a WEST project.
+        COMBINER are placed between Connector after a catchment to connect to the rest of the network.
+    Args:
+        root (ET.Element): Root element of the WEST's .Layout.xml file 
+        submodel (ET.Element): Model element to be modified
+        combClass (str): Class to assign to the model 
+    Returns:
+        tuple[ET.Element,ET.Element,str]: Updated root of the WEST's '.Layout.xml' file. InstanceName of the model 
+    """ 
+
+    setModelClass(submodel,combClass)
+    iConnector,instName = getModelNames(submodel,W_C.XML_COMB_NAMES)
+    
+    return root,instName
+
 
 #-------------Create Links ----------------------------------------------
 def createCatchmentLinksXML(linksXML:ET.Element,catchmentNames:dict[str],connectorNames:dict[str],combNames:dict[str],prevElement:str)->ET.Element:
@@ -290,52 +308,74 @@ def createLinks(root:ET.Element,namesDict:dict[str],propsCath:list[dict],propsSe
 
     linksXML = root.find('.//Links')
 
-    catchmenti = propsCath.pop(0)
     linki = 1
     lastElement = None
+    endConnection, catchiName, catchModelNames = getNextCatchment(namesDict, propsCath)
 
     for p in propsSewer:
 
         seweriName = p[STW_C.NAME]
-        catchiName = catchmenti[STW_C.NAME_CATCH]
-        iCatchment = getModelNameIndex(W_C.XML_SEWER_NAMES, catchiName)
-            
+        seweriInputName = seweriName + STW_C.INPUT_CATCHMENT #the name of a catchment correspondant to an input associated to the i sewer section
         tanksIndexes = p[STW_C.TANK_INDEXES]
-        firstTankName = namesDict[W_C.XML_SEWER_NAMES + str(tanksIndexes[0])]
 
-        if catchiName == seweriName: #if the catchment has the name of the sewer section 
+        #if the catchment has the name of the sewer section and its not attached to the end, connects the catchment before the sewer section
+        if (catchiName == seweriName) and (not endConnection):  
+            linksXML, linki, lastElement, endConnection, catchiName, catchModelNames = connectCurrentCatchment(namesDict, propsCath, linksXML, linki, lastElement, catchModelNames)
 
-            catchiModelName = namesDict[catchiName]
+        #Connects the tanks of the sewer section 
+        linksXML, linki, lastElement = connectPipeSection(namesDict, linksXML, linki, lastElement, tanksIndexes)
 
-            
-            connModelName = namesDict[catchiName]
-            combModelName = namesDict[catchiName]
+        #Connects the catchment if it connects to the end of the sewer section 
+        if (catchiName == seweriName)  and endConnection:
+            linksXML, linki, lastElement, endConnection, catchiName, catchModelNames = connectCurrentCatchment(namesDict, propsCath, linksXML, linki, lastElement, catchModelNames)
 
-
-            #TODO get the other two elements!
-
-            #Connects the catchment if it should go before the sewer section
-            if not catchmenti[STW_C.END]:
-
-                linksXML, linki, lastElement = connectCatchment(linksXML, linki, lastElement, catchiModelName, connModelName, combModelName)
-
-            #Connects the tanks of the sewer section 
-            linksXML = connectPipeSection(namesDict, linksXML, linki, lastElement, tanksIndexes)
-
-            #Connects the catchment if it should go after the sewer section 
-            if catchmenti[STW_C.END]:
-
-                linksXML, linki, lastElement = connectCatchment(linksXML, linki, lastElement, catchiModelName, connModelName, combModelName)
-            
-            #gets the next catchment
-            catchmenti = propsCath.pop(0)
-        else:
-            linksXML = connectPipeSection(namesDict, linksXML, linki, lastElement, tanksIndexes)
-
-
-    #TODO !! add input catchment
+        #Connects a input catchment if exists. If there was another catchment attached to the pipe section (at the beggining or end) 
+        #the catchmenti was updated and this will add another one for the input 
+        if (catchiName == seweriInputName):
+            linksXML, linki, lastElement, endConnection, catchiName, catchModelNames = connectCurrentCatchment(namesDict, propsCath, linksXML, linki, lastElement, catchModelNames)
 
     return root
+
+def connectCurrentCatchment(namesDict:dict[str], catchsList:list[dict], linksXML:ET.Element, linki:int, lastElement:str, catchModelNames:dict[str]):
+
+    linksXML, linki, lastElement = connectCatchment(linksXML, linki, lastElement, catchModelNames)
+    nextEndConnection, catchNextiName, catchNextModelNames = getNextCatchment(namesDict, catchsList)
+
+    return linksXML, linki, lastElement, nextEndConnection, catchNextiName, catchNextModelNames
+
+def getNextCatchment(namesDict:dict[str], catchsList:list[dict])->tuple[bool, str, dict[str]]:
+    """
+        Removes the next element from the list of catchments to model. Gets the position of the catchment (before or after the sewer section) 
+        and the names of the associated connector and two combiner model.
+    Args:
+        namesDict (dict[str]): Dictionary of names between the instance name and the model name. keys are the instanceNames.
+        catchsList (list[dict]): Catchments to be modeled in WEST and their characteristics.
+    Returns:
+        tuple[bool, str, dict[str]]: True if the catchment is connected at the end of the sewer, and false otherwise. InstanceName of the catchment. Model names of the catchment.
+    """    
+    catchmenti = catchsList.pop(0)
+    endConnection = catchmenti[STW_C.END]
+    catchiName, catchModelNames = getCatchModelsNames(namesDict, catchmenti)
+
+    return endConnection, catchiName, catchModelNames
+
+def getCatchModelsNames(namesDict:dict[str], catchmenti:dict)->tuple[str,dict[str]]:
+    """
+        Gets the instancename of the catchment model and the model names of the catchment, connector, combiner models. 
+        Assumes that Catchment_i would be connnected to well_i and combiner_i
+    Args:
+        namesDict (dict[str]): Dictionary of names between the instance name and the model name. keys are the instanceNames.
+        catchmenti (dict): Properties of the catchment model to use in WEST
+    Returns:
+        tuple[str,str,dict[str]]: InstanceName of the catchment model. Names of the catchment,connector and two combiner models.
+    """    
+    catchiName = catchmenti[STW_C.NAME_CATCH]
+    iCatchment = getModelNameIndex(W_C.XML_SEWER_NAMES, catchiName)
+    modelNames = {STW_C.CATCH_MOD_NAME:namesDict[catchiName],
+                  STW_C.CONN_MOD_NAME:namesDict[W_C.XML_CONN_NAMES + iCatchment],
+                  STW_C.COMB_MOD_NAME:namesDict[W_C.XML_COMB_NAMES + iCatchment]}
+
+    return catchiName, modelNames
 
 def connectCatchment(linksXML:ET.Element, linki:int, lastElement:str, catchiModelName:str, connName:str, combName:str):
 
@@ -352,13 +392,27 @@ def connectCatchment(linksXML:ET.Element, linki:int, lastElement:str, catchiMode
     
     return linksXML,linki,combName
 
-def connectPipeSection(namesDict:dict[str], linksXML:ET.Element, linki:int, lastElement:str, tanksIndexes:list[int]):
+def connectPipeSection(namesDict:dict[str], linksXML:ET.Element, linki:int, lastElement:str, tanksIndexes:list[int]) -> tuple[ET.Element,int,str]:
+    """
+        Connects all the tanks in series representing a pipe section between each other. Starts by connecting the last element to the first tank.  
+        Then, first to second, until n-1 to n. If there last element in the network is None, then starts in 1 to 2.
+    Args:
+        namesDict (dict[str]): Dictionary of names between the instance name and the model name. keys are the instanceNames.
+        linksXML (ET.Element): Links element of the WEST's .Layout.xml file.
+        linki (int): Index of the last link connected in the WEST model.
+        lastElement (str): Model name of the last element connected in the WEST model.
+        tanksIndexes (list[int]): The indexes of the tank in series composing the pipe section.
+    Returns:
+        tuple[ET.Element,int,str]: The updated XML element of links. The updated last link i. The updated name of the last element connected.
+    """    
+    if lastElement is None:
+        tanksIndexes = tanksIndexes[1:]
 
     for t in tanksIndexes:
         tankName = namesDict[W_C.XML_SEWER_NAMES + str(t)]
         linksXML, linki, lastElement = addLink(linksXML, linki, lastElement, tankName)
 
-    return linksXML
+    return linksXML, linki, lastElement
 
 def addLink(linksXML:ET.Element, linki:int, fromElement:str, toElement:str):
 
@@ -379,7 +433,7 @@ def getLinkAndConnectionNames(linki:int):
 
 def setPropertiesAndClasses(xml:str,xmlOut:str,
                             sewerClass:str,propsSewer:str,
-                            catchClass:str,propsCath:list[dict],
+                            catchClass:str,combClass:str,propsCath:list[dict],
                             connClass:list[dict],connectorProps:list[dict]):
     #Props must be in order TODO documentation
 
@@ -412,7 +466,7 @@ def setPropertiesAndClasses(xml:str,xmlOut:str,
             nConnectors += 1
 
         elif submodel.find("./Props/Prop[@Name='Desc']").get('Value') ==  W_C.COMBINER: #if the model is a combiner
-            #TODO root, quantities, instName = modifyConnectorModel(root, quantities, submodel, connClass, connectorProps[1],connectorProps[0])
+            root, quantities, instName = modifyCombinerModel(root, quantities, submodel, combClass)
             namesDict[instName] = submodel.attrib["Name"]
             nCombiners += 1
 
