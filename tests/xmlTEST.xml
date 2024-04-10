@@ -53,6 +53,54 @@
 <Favorites>
 </Favorites>
 </SubModel>
+<SubModel Name="Icon3">
+<Props>
+<Prop Name="InstanceName" Value="Sew_3"/>
+<Prop Name="InstanceDisplayName" Value="DOM_7925 - DOM_602606(2)"/>
+<Prop Name="ClassName" Value="psvdmSewerTank_Classplus_decay"/>
+<Prop Name="Desc" Value="Sewer"/>
+<Prop Name="Unit" Value=""/>
+<Prop Name="DefaultValue" Value=""/>
+<Prop Name="LowerBound" Value=""/>
+<Prop Name="UpperBound" Value=""/>
+<Prop Name="PDF" Value=""/>
+<Prop Name="Group" Value=""/>
+<Prop Name="Hidden" Value="false"/>
+<Prop Name="Fixed" Value="false"/>
+<Prop Name="Manip" Value="false"/>
+<Prop Name="IsFavorite" Value="false"/>
+<Prop Name="IsInner" Value="false"/>
+<Prop Name="IsOuter" Value="false"/>
+<Prop Name="EnableCustomFavorites" Value="false"/>
+<Prop Name="Data" Value=""/>
+</Props>
+<Favorites>
+</Favorites>
+</SubModel>
+<SubModel Name="Icon22">
+<Props>
+<Prop Name="InstanceName" Value="Catchment_1"/>
+<Prop Name="InstanceDisplayName" Value="DOM_7925 - DOM_602606"/>
+<Prop Name="ClassName" Value="Catchment_NoRetention_IndirectStormwater"/>
+<Prop Name="Desc" Value="Catchment"/>
+<Prop Name="Unit" Value=""/>
+<Prop Name="DefaultValue" Value=""/>
+<Prop Name="LowerBound" Value=""/>
+<Prop Name="UpperBound" Value=""/>
+<Prop Name="PDF" Value=""/>
+<Prop Name="Group" Value=""/>
+<Prop Name="Hidden" Value="false"/>
+<Prop Name="Fixed" Value="false"/>
+<Prop Name="Manip" Value="false"/>
+<Prop Name="IsFavorite" Value="false"/>
+<Prop Name="IsInner" Value="false"/>
+<Prop Name="IsOuter" Value="false"/>
+<Prop Name="EnableCustomFavorites" Value="false"/>
+<Prop Name="Data" Value=""/>
+</Props>
+<Favorites>
+</Favorites>
+</SubModel>
 <SubModel Name="Icon2">
 <Props>
 <Prop Name="InstanceName" Value="Catchment_2"/>
@@ -133,7 +181,7 @@
 <StateVars>
 </StateVars>
 <Links>
-<Link Name="Link153815">
+<Link Name="Link1">
 <Props>
 <Prop Name="From" Value="sub_models.Icon00008.interface.Outflow"/>
 <Prop Name="To" Value="sub_models.Icon1.interface.Inflow"/>
@@ -141,7 +189,7 @@
 <Prop Name="Data" Value="ConnectionName=&quot;CustomOrthogonalLine1&quot; ConnectionType=&quot;WaterLine&quot;"/>
 </Props>
 </Link>
-<Link Name="Link171647">
+<Link Name="Link2">
 <Props>
 <Prop Name="From" Value="sub_models.Icon1.interface.Outflow"/>
 <Prop Name="To" Value="sub_models.Icon2.interface.Inflow"/>

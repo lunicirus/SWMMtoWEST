@@ -58,8 +58,7 @@ def createLinkXML(linkName:str, fromM:str, toM:str, lineName:str)->ET.Element:
     #         <Prop Name="Data" Value="ConnectionName=&quot;CustomOrthogonalLine31&quot; ConnectionType=&quot;WaterLine&quot;"/>
     #     </Props>
     # </Link> 
-
-    fromVal = W_C.XML_SUBMOD + "." +fromM + W_C.XML_INTERFACE_OUT
+    fromVal = W_C.XML_SUBMOD + "." + fromM + W_C.XML_INTERFACE_OUT
     toVal = W_C.XML_SUBMOD + "." + toM + W_C.XML_INTERFACE_IN
     dataVal = W_C.XML_CONN_NAME + "=" + W_C.XML_QUOT + lineName + W_C.XML_QUOT + ' ' + W_C.XML_CONN_TYPE + "=" + W_C.XML_QUOT + W_C.XML_WATERLINE + W_C.XML_QUOT
 
@@ -304,7 +303,7 @@ def createCatchmentLinksXML(linksXML:ET.Element,catchmentNames:dict[str],connect
     return linksXML
 
 
-def createLinks(root:ET.Element,namesDict:dict[str],propsCath:list[dict],propsSewer:list[dict]):
+def createLinks(root:ET.Element, namesDict:dict[str], propsCath:list[dict], propsSewer:list[dict])->ET.Element:
 
     linksXML = root.find('.//Links')
 
@@ -336,8 +335,23 @@ def createLinks(root:ET.Element,namesDict:dict[str],propsCath:list[dict],propsSe
 
     return root
 
-def connectCurrentCatchment(namesDict:dict[str], catchsList:list[dict], linksXML:ET.Element, linki:int, lastElement:str, catchModelNames:dict[str]):
-
+def connectCurrentCatchment(namesDict:dict[str], catchsList:list[dict], linksXML:ET.Element, linki:int, lastElement:str,
+                            catchModelNames:dict[str])->tuple[ET.Element,int,str,bool,str,dict[str]]:
+    """
+        Connects the current catchment to the WEST model and gets the required values of the next catchment.
+    Args:
+        namesDict (dict[str]): Dictionary of names between the instance name and the model name. keys are the instanceNames.
+        catchsList (list[dict]): Catchments to be modeled in WEST and their characteristics.
+        linksXML (ET.Element):  Links element of the WEST's .Layout.xml file.
+        linki (int): Index of the next link in the WEST model.
+        lastElement (str): Model name of the last element connected in the WEST model
+        catchModelNames (dict[str]): Names of the catchment,connector and two combiner models.
+    Returns:
+        tuple[ET.Element,int,str,bool,str,dict[str]]:  Updated XML element of links. Updated index for the next link. 
+                                                       Model name of the last element connected to the WEST model.
+                                                       True if the next catchment is connected at the end of the sewer, and false otherwise.
+                                                       InstanceName of the next catchment. Model names of the next catchment.
+    """    
     linksXML, linki, lastElement = connectCatchment(linksXML, linki, lastElement, catchModelNames)
     nextEndConnection, catchNextiName, catchNextModelNames = getNextCatchment(namesDict, catchsList)
 
@@ -359,7 +373,7 @@ def getNextCatchment(namesDict:dict[str], catchsList:list[dict])->tuple[bool, st
 
     return endConnection, catchiName, catchModelNames
 
-def getCatchModelsNames(namesDict:dict[str], catchmenti:dict)->tuple[str,dict[str]]:
+def getCatchModelsNames(namesDict:dict[str], catchmenti:dict)->tuple[str, dict[str]]:
     """
         Gets the instancename of the catchment model and the model names of the catchment, connector, combiner models. 
         Assumes that Catchment_i would be connnected to well_i and combiner_i
@@ -377,10 +391,24 @@ def getCatchModelsNames(namesDict:dict[str], catchmenti:dict)->tuple[str,dict[st
 
     return catchiName, modelNames
 
-def connectCatchment(linksXML:ET.Element, linki:int, lastElement:str, catchiModelName:str, connName:str, combName:str):
-
+def connectCatchment(linksXML:ET.Element, linki:int, lastElement:str, catchModelName:str, connName:str, 
+                                                                        combName:str)->tuple[ET.Element, int, str]:
+    """
+        Creates the required links to connect to the WEST model: the last element to the catchment, the catchment to a connector, and 
+        the connector to a two combiner.
+    Args:
+        linksXML (ET.Element): Links element of the WEST's .Layout.xml file.
+        linki (int): Index of the next link in the WEST model.
+        lastElement (str): Model name of the last element connected in the WEST model.
+        catchModelName (str): Model name of the catchment to be attached.
+        connName (str): Model name of the connection associated to the catchment.
+        combName (str): Model name of the two combiner associated to the catchemnt.
+    Returns:
+        tuple[ET.Element, int, str]: Updated XML element of links. Updated index for the next link. 
+                                     Model name of the last element connected to the WEST model.
+    """    
     nameL, nameC, linki = getLinkAndConnectionNames(linki)
-    catchmentN = {STW_C.ELE_NAME:catchiModelName,STW_C.LINK_NAME:nameL,STW_C.CONN_NAME:nameC}
+    catchmentN = {STW_C.ELE_NAME:catchModelName,STW_C.LINK_NAME:nameL,STW_C.CONN_NAME:nameC}
 
     nameL, nameC, linki = getLinkAndConnectionNames(linki)
     connN = {STW_C.ELE_NAME:connName,STW_C.LINK_NAME:nameL,STW_C.CONN_NAME:nameC}
@@ -390,22 +418,24 @@ def connectCatchment(linksXML:ET.Element, linki:int, lastElement:str, catchiMode
 
     linksXML = createCatchmentLinksXML(linksXML,catchmentN,connN,combN,lastElement)
     
-    return linksXML,linki,combName
+    return linksXML, linki, combName
 
-def connectPipeSection(namesDict:dict[str], linksXML:ET.Element, linki:int, lastElement:str, tanksIndexes:list[int]) -> tuple[ET.Element,int,str]:
+def connectPipeSection(namesDict:dict[str], linksXML:ET.Element, linki:int, lastElement:str, 
+                                                                            tanksIndexes:list[int])->tuple[ET.Element, int, str]:
     """
         Connects all the tanks in series representing a pipe section between each other. Starts by connecting the last element to the first tank.  
         Then, first to second, until n-1 to n. If there last element in the network is None, then starts in 1 to 2.
     Args:
         namesDict (dict[str]): Dictionary of names between the instance name and the model name. keys are the instanceNames.
         linksXML (ET.Element): Links element of the WEST's .Layout.xml file.
-        linki (int): Index of the last link connected in the WEST model.
+        linki (int): Index of the next link in the WEST model.
         lastElement (str): Model name of the last element connected in the WEST model.
         tanksIndexes (list[int]): The indexes of the tank in series composing the pipe section.
     Returns:
-        tuple[ET.Element,int,str]: The updated XML element of links. The updated last link i. The updated name of the last element connected.
+        tuple[ET.Element,int,str]: The updated XML element of links. Updated index for the next link. The updated name of the last element connected.
     """    
     if lastElement is None:
+        lastElement = namesDict[W_C.XML_SEWER_NAMES + str(tanksIndexes[0])]
         tanksIndexes = tanksIndexes[1:]
 
     for t in tanksIndexes:
@@ -414,22 +444,38 @@ def connectPipeSection(namesDict:dict[str], linksXML:ET.Element, linki:int, last
 
     return linksXML, linki, lastElement
 
-def addLink(linksXML:ET.Element, linki:int, fromElement:str, toElement:str):
-
+def addLink(linksXML:ET.Element, linki:int, fromElement:str, toElement:str)->tuple[ET.Element, int, str]:
+    """
+        Adds a new link to the links element of the model's XML layout file. 
+        For this, creates the names of the link and connection. Creates the XML of a link, and adds it to the links element. 
+    Args:
+        linksXML (ET.Element): Links element of the WEST's .Layout.xml file.
+        linki (int): Index of the next link in the WEST model.
+        fromElement (str): Model name of the element where the link starts.
+        toElement (str): Model name of the element where the link finishes.
+    Returns:
+        tuple[ET.Element, int, str]: Updated links element. Updated index for the next link. Model name of the last element connected to the WEST model.
+    """    
     nameL, nameC, linki = getLinkAndConnectionNames(linki)
 
     linkAux = createLinkXML(nameL,fromElement,toElement,nameC)
     linksXML.append(linkAux)
 
-    return linksXML,linki,toElement
+    return linksXML, linki, toElement
 
-def getLinkAndConnectionNames(linki:int):
-
+def getLinkAndConnectionNames(linki:int)->tuple[str, str, int]:
+    """
+        Creates new link and connection names and increases the index of the links in the WEST model.
+    Args:
+        linki (int): Index of the next link in the WEST model.
+    Returns:
+        tuple[str,str,int]: Name of the link. Name of the connection. Updated index for the next link.
+    """    
     nameL = STW_C.LINK_NAME_SUFFIX + str(linki)
     nameC = STW_C.CONNECTION_NAME_SUFFIX + str(linki)
     linki += 1
 
-    return nameL,nameC,linki
+    return nameL, nameC, linki
 
 def setPropertiesAndClasses(xml:str,xmlOut:str,
                             sewerClass:str,propsSewer:str,
