@@ -26,6 +26,8 @@ NAME_CATCH = 'CatchmentName'
 AREA = 'AreaCatchment'
 DF_BASELINE = 'DirectFBaseline'
 INPUT_CATCHMENT = "[input]"
+BEFORE_CATCHMENT = "[previous]"
+SECTION_CATCHMENT = "(Catch)"
 
 CONNECTED_PIPE_SUFFIX = '_dischargingPipe'
 TRUNK_PIPE_SUFFIX = '_trunkPipe'
