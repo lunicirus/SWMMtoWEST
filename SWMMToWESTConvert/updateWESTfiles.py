@@ -184,9 +184,7 @@ def modifyCatchmentModel(root:ET.Element, quantities:ET.Element, submodel:ET.Ele
         
         if iCatch == i:
             
-            pos = STW_C.BEFORE_CATCHMENT if catchM[STW_C.END] else ''
-            catchName = catchM[STW_C.NAME] + STW_C.SECTION_CATCHMENT + pos
-            submodel.find("./Props/Prop[@Name='"+ W_C.XML_MODEL_PROP_NAME + "']").set('Value', catchName) #Sets the name
+            submodel.find("./Props/Prop[@Name='"+ W_C.XML_MODEL_PROP_NAME + "']").set('Value', catchM[STW_C.NAME]) #Sets the name
 
             #For simple values
             for P,XMLval in zip(CATCH_DICT_SET,CATCH_XML_SET):

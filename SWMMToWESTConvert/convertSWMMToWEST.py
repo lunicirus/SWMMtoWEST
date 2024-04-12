@@ -145,7 +145,10 @@ def createCatchmentWEST(name:str, element:dict, timePatterns:dict, isEnd:bool=Tr
         dict: dictionary representing a catchment in WEST.
     """    
     catchment = {}
-    catchment[STW_C.NAME_CATCH] = name
+
+    pos = '' if isEnd else STW_C.BEFORE_CATCHMENT
+    catchment[STW_C.NAME_CATCH] = name + STW_C.SECTION_CATCHMENT + pos
+    catchment[STW_C.END] = isEnd
     
     #Attributes of catchments (equal to SWMM) ----------------------------
     catchment[STW_C.AREA] = element[SWMM_C.AREA] * 10000 #converts from ha to m2
@@ -170,8 +173,6 @@ def createCatchmentWEST(name:str, element:dict, timePatterns:dict, isEnd:bool=Tr
     #directFlow[DDFLOW_TIMES] = timeSeries
     #directFlow[DFLOW_SFACTOR] = Sfactor
     
-    #Aux attributes ---------------------------------------------
-    catchment[STW_C.END] = isEnd
     
     return catchment
 
@@ -189,7 +190,7 @@ def createInputWEST(name:str,input:str,tsInputs:'pd.DataFrame')->dict:
     npeople = None
     tPatternP= None
 
-    inputWEST[STW_C.NAME_CATCH] = name + STW_C.INPUT_CATCHMENT
+    inputWEST[STW_C.NAME_CATCH] = name + STW_C.SECTION_CATCHMENT + STW_C.INPUT_CATCHMENT
 
     #Catchment attributes not used for representing an input -----------------
     inputWEST[STW_C.AREA] = 0
@@ -300,7 +301,7 @@ def createCatchmentsFromFlowElement(element:'pd.Serie', timePatterns:dict[list],
     element.drop(labels=STW_C.MODELED_INPUT,inplace=True) #TODO why do i need to drop it?
     element.fillna(0,inplace=True)
                 
-         #if any of the others values are different from zero or null then it creates a catchment object      
+    #if any of the others values are different from zero or null then it creates a catchment object      
     if ~((element == 0.0) | element.isna()).all():
         catchment = createCatchmentWEST(pipeSectionName, element, timePatterns) #Cathcments are named as the name the pipe section connected to
         catchments.append(catchment)
@@ -336,10 +337,7 @@ def getPathElementsDividingByDiam(dfs,elements, initialElements,timePatterns,tSC
             
             for shapeType, group  in shapes:
 
-                #print("pipe: ",group.iloc[0,0], " - ", group.iloc[-1,0])
-                
-                #Creates and adds the pipe section to the list
-                sewerSect, name, n = createSewerWEST(group,shapeType,tankIndex) 
+                sewerSect, name, n = createSewerWEST(group,shapeType,tankIndex) #Creates and adds the pipe section to the list
                 pipesSection.append(sewerSect)
                 tankIndex += n
                 
