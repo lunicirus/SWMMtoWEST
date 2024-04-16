@@ -441,9 +441,9 @@ def getLinkAndConnectionNames(linki:int)->tuple[str, str, int]:
 
     return nameL, nameC, linki
 
-def createLinks(root:ET.Element, namesDict:dict[str], catchments:list[dict], sewerSections:list[dict])->ET.Element:
+def createLinks(root:ET.Element, namesDict:dict[str], catchments:list[dict], sewerSections:list[dict], lastElement:str, linki:int)->tuple[ET.Element,str,int]:
     """
-        Creates all the links of the model. Loops the sewer sections adding links between the tanks composing them and 
+        Creates all the links of a path. Loops the sewer sections adding links between the tanks composing them and 
         links the catchments with the same name of the sewer section before or after the tank according to its position property.
         The element Links should exist in the WEST's '.Layout.xml' file
     Args:
@@ -451,15 +451,15 @@ def createLinks(root:ET.Element, namesDict:dict[str], catchments:list[dict], sew
         namesDict (dict[str]): Dictionary of names between the instance name and the model name. keys are the instanceNames.
         catchments (list[dict]): All catchments of the model and their properties.
         sewerSections (list[dict]): All sewer sections of the model and their properties.
+        lastElement (str): Model name of the element to which the first element of the path would be connected.
+        linki (int): Index of the next link to be created for the model. 
     Returns:
         ET.Element: updated root element of the WEST's '.Layout.xml' file
     """    
     #TODO check if the links exist already
-
     linksXML = root.find('.//Links')
 
-    linki, catchi = 1, 1
-    lastElement = None
+    catchi = 1, 1
     endConnection, catchiName, catchModelNames, catchi = getNextCatchment(namesDict, catchments,catchi)
 
     for p in sewerSections:
@@ -484,18 +484,23 @@ def createLinks(root:ET.Element, namesDict:dict[str], catchments:list[dict], sew
         if (catchiName == seweriInputName):
             linksXML, linki, lastElement, endConnection, catchiName, catchModelNames, catchi = connectCurrentCatchment(namesDict, catchments, linksXML, linki, lastElement, catchModelNames, catchi)
 
-    return root
+    return root, lastElement, linki
 
-def setPropertiesAndClasses(xml:str,xmlOut:str,
-                            sewerClass:str,propsSewer:str,
-                            catchClass:str,combClass:str,propsCath:list[dict],
-                            connClass:list[dict],connectorProps:list[dict]):
-    #Props must be in order TODO documentation
-
-    # Read the XML file
-    tree = ET.parse(xml)
-    root = tree.getroot()  
-
+def setPropertiesAndClasses(root:ET.Element,modelClasses:dict[str],attrSewer:list[dict],attrCatch:list[dict],
+                            attrConn:list[dict],eleToConnect:str=None, linki:int=1)->tuple[ET.Element,str,int]:
+    """
+        Set the properties and classes of all the elements of a path. It also creates links connecting the elements of the path.
+    Args:
+        root (ET.Element): Root element of the layout XML file of the WEST model.
+        modelClasses (dict[str]): Classes to be set to each type of model. 
+        attrSewer (list[dict]): Attributes of the sewers. Sewers are assumed to be in order e.i., the first properties belong to sewer 1.
+        attrCatch (list[dict]): Attributes of the catchments. Catchments are assumed to be in order.
+        attrConn (list[dict]): Attributes of the connectors. all connectors have the same properties.
+        eleToConnect (str, optional): Model name of the element (not in the path) to which the first element of the path would be connected. Defaults to None.
+        linki (int, optional): Index of the next link to be created for the model. Defaults to 1.
+    Returns:
+        tuple[ET.Element,int,dict[str]]: Updated root element of the xml file. Index of the next link to be created for the model
+    """    
     submodels = root.findall('.//SubModel') 
     quantities = root.find('.//Quantities')
 
@@ -506,33 +511,97 @@ def setPropertiesAndClasses(xml:str,xmlOut:str,
     for submodel  in submodels: # Iterate over the SubModels
         
         if submodel.find("./Props/Prop[@Name='Desc']").get('Value') ==  W_C.SEWER: #if the model is a sewer
-            root, quantities, displayName = modifySewerModel(root, quantities, submodel, sewerClass, propsSewer)
+            root, quantities, displayName = modifySewerModel(root, quantities, submodel, modelClasses[STW_C.SEWER_CLASS], attrSewer)
             namesDict[displayName] = submodel.attrib["Name"]
             nSewers += 1
 
         elif submodel.find("./Props/Prop[@Name='Desc']").get('Value') ==  W_C.CATCHMENT: #if the model is a catchment
-            root, quantities, displayName = modifyCatchmentModel(root, quantities, submodel, catchClass, propsCath)
+            root, quantities, displayName = modifyCatchmentModel(root, quantities, submodel, modelClasses[STW_C.CATCH_CLASS], attrCatch)
             namesDict[displayName] = submodel.attrib["Name"]
             nCatchments += 1
 
         elif submodel.find("./Props/Prop[@Name='Desc']").get('Value') ==  W_C.CONNECTOR: #if the model is a connector
-            root, quantities, displayName = modifyConnectorModel(root, quantities, submodel, connClass, connectorProps[1],connectorProps[0])
+            root, quantities, displayName = modifyConnectorModel(root, quantities, submodel, modelClasses[STW_C.CONN_CLASS], attrConn[1],attrConn[0])
             namesDict[displayName] = submodel.attrib["Name"]
             nConnectors += 1
 
         elif submodel.find("./Props/Prop[@Name='Desc']").get('Value') ==  W_C.COMBINER: #if the model is a combiner
-            root, quantities, displayName = modifyCombinerModel(root, quantities, submodel, combClass)
+            root, quantities, displayName = modifyCombinerModel(root, quantities, submodel, modelClasses[STW_C.COMB_CLASS])
             namesDict[displayName] = submodel.attrib["Name"]
             nCombiners += 1
 
-    
-    #Create the links
-    createLinks(root,namesDict,propsCath,propsSewer)
-           
     print("The number of sewers found were ", nSewers, ", catchments ", nCatchments, " and connectors ", nConnectors)
+
+    #Create the links
+    root, lastElement, linkiFinal = createLinks(root, namesDict, attrCatch, attrSewer, eleToConnect, linki)
+    print("The number of created links was ", linkiFinal-linki)
+           
+    return root, linkiFinal, namesDict
+ 
+
+def getLastTankModelName(pipeSections:list[dict], lastPipe:str, namesDict:dict[str])->str:
+    """
+        Obtains the model name of the last tank in series represeting the pipe section with the lastpipe.
+    Args:
+        pipeSections (list[dict]): Pipe sections and their properties.
+        lastPipe (str): Name of the last pipe in a pipe section.
+        namesDict (dict[str]): Dictionary of names between the instance name and the model name. keys are the instanceNames.
+    Raises:
+        Exception: If the pipe was not the last pipe of any sections.
+    Returns:
+        str: Name of the WEST model of the last tank in the pipe section finishing at the last pipe 
+    """    
+    nameTank = None
+    for pipeSection in pipeSections:
+
+        lastPipeSection = pipeSection[STW_C.NAME].split(STW_C.PIPE_SEC_NAM_SEP)[1].strip()
+
+        if lastPipeSection == lastPipe:
+            last_index = pipeSection[STW_C.TANK_INDEXES][-1]
+            nameTank = pipeSection[STW_C.NAME] + "(" + str(last_index) + ")"
+            break
+    else:
+        raise Exception("The tank name was not found")
     
+    nameModel = namesDict[nameTank]
+
+    return nameModel
+    
+def updateWESTLayoutFile(layoutXML:str, layoutXML_MOD:str, modelClasses:dict[str], trunkModels:list[list[dict]],
+                         branchesModels:dict[dict[list[dict]]], connAttributes:list):
+    """
+        Updates the classes and atributes of all elements on a network, creating links between all elements.
+    Args:
+        layoutXML (str): Path to the XML file with the layout of the WEST model.
+        layoutXML_MOD (str): Path to where the modified layout file will be saved.
+        modelClasses (dict[str]): Classes to be set to each type of model. Using Constants as keys e.g. SEWER_CLASS, CATCH_CLASS.
+        trunkModels (list[list[dict]]): Two lists reprenting the trunk of the network. One list has all sewer sections (as dictionaries) and the other all catchments. 
+        branchesModels (dict[dict[list[dict]]]): The keys are the name of the pipe that connects the branch and the trunk, the values are the attributes of the elements
+                                           in the branch. Each branch dictionary has two elements one list of sewers, one list of the catchments (CONSTANTS as keys).
+        connAttributes (list): Attributes of the connectors. all connectors have the same properties.
+    """        
+    tree = ET.parse(layoutXML) # Read the XML file
+    root = tree.getroot()  
+
+    # Adds the properties of the elements within the trunk
+    pipeSections = trunkModels[0]
+    root, lastElement, linki = setPropertiesAndClasses(root, modelClasses, pipeSections, trunkModels[1], connAttributes)
+
+    for br in branchesModels.keys():
+
+        #br = 
+        #Connect the branch TODO
+
+        #firstBranchElement
+        #ultimo tanque del pipe section que tenga nombre igual al br 
+
+        # Adds the properties of the elements within the branch
+        branch = branchesModels[br]
+        root, lastElement, linki = setPropertiesAndClasses(root, modelClasses, 
+                                                           branch[STW_C.PATH],branch[STW_C.WCATCHMENTS],connAttributes,
+                                                           lastElement,linki)
+
     # Save the modified XML to a new file
     ET.indent(tree, space="\t", level=0)
-    tree.write(xmlOut)
- 
+    tree.write(layoutXML_MOD)
     

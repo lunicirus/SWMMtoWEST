@@ -134,6 +134,26 @@ def elements2():
 
     return sewers, catchments
 
+@pytest.fixture
+def pipeSectionsAndDict():
+
+    pipeSections = [{"PipeName": "UNI_5277 - UNI_602608", "tanksIndexes": [1, 2, 3]},
+                    {"PipeName": "UNI_602607 - UNI_18252", "tanksIndexes": [4, 5, 6]},
+                    {"PipeName": "UNI_18251 - DOM_35983", "tanksIndexes": [7, 8, 9]}]
+    
+    namesDict = {
+                    "UNI_5277 - UNI_602608(1)": "Icon1",
+                    "UNI_5277 - UNI_602608(2)": "Icon2",
+                    "UNI_5277 - UNI_602608(3)": "Icon3",
+                    "UNI_602607 - UNI_18252(4)": "Icon4",
+                    "UNI_602607 - UNI_18252(5)": "Icon5",
+                    "UNI_602607 - UNI_18252(6)": "Icon6",
+                    "UNI_18251 - DOM_35983(7)": "Icon7",
+                    "UNI_18251 - DOM_35983(8)": "Icon8",
+                    "UNI_18251 - DOM_35983(9)": "Icon9"
+                }
+    return pipeSections, namesDict
+
 #---------------------------Utils-------------------------
 def checkLink(xml,linkName,fromM,toM,connName):
 
@@ -240,7 +260,7 @@ def test_createLinks_conf1(sample_Elements,names_Dict_Conf,elements):
     sewerSections = elements[0]
     catchments = elements[1]
 
-    result_root = uf.createLinks(root, names_Dict_Conf, catchments, sewerSections)
+    result_root, lastElement, linki = uf.createLinks(root, names_Dict_Conf, catchments, sewerSections, None, 1)
 
     #ET.indent(tree, space="\t", level=0)
     #tree.write('tests/xmlTEST_Mod1.xml')
@@ -289,7 +309,7 @@ def test_createLinks_conf2(sample_Elements,names_Dict_Conf1,elements1):
     sewerSections = elements1[0]
     catchments = elements1[1]
 
-    result_root = uf.createLinks(root, names_Dict_Conf1, catchments, sewerSections)
+    result_root, lastElement, linki  = uf.createLinks(root, names_Dict_Conf1, catchments, sewerSections,None,1)
 
     ET.indent(tree, space="\t", level=0)
     tree.write('tests/xmlTEST_Mod1.xml')
@@ -335,7 +355,7 @@ def test_createLinks_conf3(sample_Elements,names_Dict_Conf2,elements2):
     sewerSections = elements2[0]
     catchments = elements2[1]
 
-    result_root = uf.createLinks(root, names_Dict_Conf2, catchments, sewerSections)
+    result_root, lastElement, linki  = uf.createLinks(root, names_Dict_Conf2, catchments, sewerSections,None,1)
 
     ET.indent(tree, space="\t", level=0)
     tree.write('tests/xmlTEST_Mod1.xml')
@@ -375,3 +395,20 @@ def test_createLinks_conf3(sample_Elements,names_Dict_Conf2,elements2):
     checkLink(links_element,"Link22","Icon24","Icon15","CustomOrthogonalLine22") 
     checkLink(links_element,"Link23","Icon15","Icon20","CustomOrthogonalLine23") 
     checkLink(links_element,"Link24","Icon20","Icon25","CustomOrthogonalLine24") 
+
+def test_getLastTankModelName(pipeSectionsAndDict):
+    
+    lastPipe = "UNI_18252"  # Assuming the last pipe is in the second pipe section
+    result = uf.getLastTankModelName(pipeSectionsAndDict[0], lastPipe, pipeSectionsAndDict[1]) 
+
+    assert result == "Icon6" 
+
+def test_getLastTankModelName_exception(pipeSectionsAndDict):
+
+    lastPipe = "UnknownPipe"  # Assuming the last pipe is not in any pipe section
+
+    with pytest.raises(Exception) as excinfo: # Call the function and assert the exception
+        uf.getLastTankModelName(pipeSectionsAndDict[0], lastPipe, pipeSectionsAndDict[1])
+
+    assert "The tank name was not found" in str(excinfo.value) # Assert the exception message
+

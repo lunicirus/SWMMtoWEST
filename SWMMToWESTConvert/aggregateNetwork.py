@@ -386,18 +386,18 @@ def getTrunkModels(links:pd.DataFrame, networkLookNodes:pd.DataFrame, outfile:st
         idWRRF (str): Name in the .inp of the node representing the entrance of the WRRF.
         idTrunkIni (str,optional): Id name of the most upstream node of the trunk in the .inp. Defaults to None.
     Returns:
-        tuple[list[str],tuple[list,list]]: Names of the connecting pipes to the trunk that were selected as branches to model in detail.
-        Models representing the trunk with the list of tank series models and a list of catchments models.
+        tuple[list[str],tuple[list,list],pd.DataFrame]: Names of the connecting pipes to the trunk that were selected as branches to model in detail.
+                                                        Models representing the trunk with the list of tank series models and a list of catchments models.
     """    
     print("-------------------------------Obtaining and modelling the Trunk -------------------------------------------------")
     trunkDF = findTrunk(idWRRF,outfile,links,idTrunkIni) #df of the network's trunk
 
     branches, trunkModelsTanks, trunkModelsCatch = modelPath(trunkDF,True,links,networkLookNodes,outfile,nodeMeasurementFlow,patterns) 
 
-    return branches,[trunkModelsTanks,trunkModelsCatch]
+    return branches, [trunkModelsTanks,trunkModelsCatch], trunkDF
 
 def getBranchesModels(links:pd.DataFrame, networkLookNodes:pd.DataFrame, outfile:str, nodeMeasurementFlow:list[str], patterns:dict[list],
-                      branches:pd.DataFrame)->dict[dict]:
+                      branches:pd.DataFrame, trunkPath: pd.DataFrame)->dict[dict]:
     """
         For each branch it finds the main flow path, selects the relevant branches and then convert them into WEST models
     Args:
@@ -406,7 +406,8 @@ def getBranchesModels(links:pd.DataFrame, networkLookNodes:pd.DataFrame, outfile
         outfile (str): Path of the .out file created by SWMM after running the model with the flowrate timeseries of the pipes
         nodeMeasurementFlow (list[str]): List of nodes where field measurements are taken.
         patterns (dict[list]): Patterns of the network.
-        branches (list[str]): names  of the connecting pipes to the trunk that were selected as branches to model in detail.
+        branches (list[str]): Names  of the connecting pipes to the trunk that were selected as branches to model in detail.
+        trunkPath (pd.DataFrame): Links on the trunk path.
     Returns:
         dict[dict]: A dictionary for each branch using as key the name of the pipe discharging into the trunk. A branch dictionary has a list of tank series models and a list of catchments models 
     """    
@@ -416,15 +417,18 @@ def getBranchesModels(links:pd.DataFrame, networkLookNodes:pd.DataFrame, outfile
     for branch in branches.index:#TODO this only works if there is only one pipe discahrging in that node
         
         print("--------------------------Obtaining and modelling branch ",branch,"-------------------------------------------")
-        nodeStartBranchTRunk = links.loc[branch,SWWM_C.IN_NODE] 
+        nodeStartBranch = links.loc[branch,SWWM_C.IN_NODE] 
+        nodeConnectingTrunk = links.loc[branch,SWWM_C.OUT_NODE] 
 
-        pathDF = fp.findMainFlowPath(nodeStartBranchTRunk,outfile,links)
+        pathDF = fp.findMainFlowPath(nodeStartBranch,outfile,links)
 
         bRelevant, branchModelsTanks, branchModelsCatch = modelPath(pathDF,False,links,networkLookNodes,outfile,nodeMeasurementFlow,patterns) 
 
-        branchesModels[branch] = {} #creates the dictionary inside the dictionary with key the first pipe of the branch
-        branchesModels[branch][STW_C.PATH] = branchModelsTanks
-        branchesModels[branch][STW_C.WCATCHMENTS] = branchModelsCatch
+        #creates the dictionary inside the dictionary with key the outnode where the branch discharges
+        branchConnection = trunkPath[trunkPath[SWWM_C.OUT_NODE] == nodeConnectingTrunk].Name.iloc[0]
+        branchesModels[branchConnection] = {} 
+        branchesModels[branchConnection][STW_C.PATH] = branchModelsTanks
+        branchesModels[branchConnection][STW_C.WCATCHMENTS] = branchModelsCatch
 
     return branchesModels
 
@@ -444,8 +448,8 @@ def aggregateAndModelNetwork(networkInp:str, idWRRF:str, nodeMeasurementFlow:lis
     networkElements, outfile = gnpd.getsNetwork(networkInp) #Gets all the necesary elements from the network 
     networkLookPoints = createLookPointsDF(networkElements) #Joins all important points of the whole network into a df
     
-    branches, trunkModels = getTrunkModels(networkElements[STW_C.LINKS], networkLookPoints, outfile, nodeMeasurementFlow, networkElements[STW_C.T_PATTERNS], idWRRF, idTrunkIni)  
-    branchesModels = getBranchesModels(networkElements[STW_C.LINKS], networkLookPoints, outfile, nodeMeasurementFlow, networkElements[STW_C.T_PATTERNS], branches)
+    branches, trunkModels, trunk = getTrunkModels(networkElements[STW_C.LINKS], networkLookPoints, outfile, nodeMeasurementFlow, networkElements[STW_C.T_PATTERNS], idWRRF, idTrunkIni)  
+    branchesModels = getBranchesModels(networkElements[STW_C.LINKS], networkLookPoints, outfile, nodeMeasurementFlow, networkElements[STW_C.T_PATTERNS], branches, trunk)
 
     return trunkModels,branchesModels
 

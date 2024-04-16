@@ -242,7 +242,7 @@ def getPathElements(dfs:list['pd.DataFrame'],elements:'pd.DataFrame', initialEle
             raise 
 
         mostCommonShape = dfClean[SWMM_C.SHAPE].value_counts().idxmax()
-        name = dfClean.iloc[0,0] + " - " + dfClean.iloc[-1,0]
+        name = dfClean.iloc[0,0] + STW_C.PIPE_SEC_NAM_SEP + dfClean.iloc[-1,0]
         
         #Creates and adds the pipe section to the list
         sewerSect, n = createSewerWEST(dfClean,name,mostCommonShape,tankIndex) 

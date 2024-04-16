@@ -18,6 +18,11 @@ TANK_INDEXES = 'tanksIndexes'
 FLOWRPERPERSON = "FlowPerPerson"
 TIMEPATTERN ='TimePattern'
 
+SEWER_CLASS = 'Sewers Class'
+CATCH_CLASS = 'Catchments Class'
+CONN_CLASS = 'Connectors Class'
+COMB_CLASS = 'Two Way Combiners Class'
+
 NAME = 'PipeName'
 DIAM = 'PipeDiameter'
 AREATANK = 'AreaTank'
@@ -25,6 +30,7 @@ AREATANK = 'AreaTank'
 NAME_CATCH = 'CatchmentName'
 AREA = 'AreaCatchment'
 DF_BASELINE = 'DirectFBaseline'
+PIPE_SEC_NAM_SEP = " - "
 INPUT_CATCHMENT = "[input]"
 BEFORE_CATCHMENT = "[previous]"
 SECTION_CATCHMENT = "(Catch)"
