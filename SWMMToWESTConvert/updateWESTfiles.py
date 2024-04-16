@@ -459,7 +459,7 @@ def createLinks(root:ET.Element, namesDict:dict[str], catchments:list[dict], sew
     #TODO check if the links exist already
     linksXML = root.find('.//Links')
 
-    catchi = 1, 1
+    catchi = 1
     endConnection, catchiName, catchModelNames, catchi = getNextCatchment(namesDict, catchments,catchi)
 
     for p in sewerSections:
