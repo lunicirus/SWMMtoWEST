@@ -9,7 +9,7 @@ import SWMMToWESTConvert.SWMM_InpConstants as SWWM_C
 import SWMMToWESTConvert.SWMMtoWESTConstants as STW_C
 
 
-def getsNetwork(networkFile:str)-> tuple[dict,str]:
+def getNetwork(networkFile:str)-> tuple[dict,str]:
     """
         Instanciates the network as a swmmio model and gets all the relevant elements of the network.
     Args:

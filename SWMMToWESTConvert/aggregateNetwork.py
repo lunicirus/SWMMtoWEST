@@ -175,7 +175,7 @@ def convertListPathtoDF(path:list[str], linksNetwork:pd.DataFrame)->pd.DataFrame
     """         
     return linksNetwork.loc[path].copy()
 
-def createLookPointsDF(nElements:dict)->pd.DataFrame:
+def getNetworkLookPoints(nElements:dict)->pd.DataFrame:
     """
         Merges all the network flow elements (catchments, dwfs, direct flows) in a dataframe. 
         It aggregates catchments that discharge on the same node.
@@ -445,8 +445,8 @@ def aggregateAndModelNetwork(networkInp:str, idWRRF:str, nodeMeasurementFlow:lis
         tuple[tuple[list,list],dict[dict]]: A tuple representing the trunk with the list of tank series models and a list of catchments models.
                                             A dictonary with a dictionary for each branch. Each branch dictionary has a list of tank series models and a list of catchments models.
     """    
-    networkElements, outfile = gnpd.getsNetwork(networkInp) #Gets all the necesary elements from the network 
-    networkLookPoints = createLookPointsDF(networkElements) #Joins all important points of the whole network into a df
+    networkElements, outfile = gnpd.getNetwork(networkInp) #Gets all the necesary elements from the network 
+    networkLookPoints = getNetworkLookPoints(networkElements) #Joins all important points of the whole network into a df
     
     branches, trunkModels, trunk = getTrunkModels(networkElements[STW_C.LINKS], networkLookPoints, outfile, nodeMeasurementFlow, networkElements[STW_C.T_PATTERNS], idWRRF, idTrunkIni)  
     branchesModels = getBranchesModels(networkElements[STW_C.LINKS], networkLookPoints, outfile, nodeMeasurementFlow, networkElements[STW_C.T_PATTERNS], branches, trunk)
