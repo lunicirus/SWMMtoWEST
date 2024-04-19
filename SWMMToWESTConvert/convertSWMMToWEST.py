@@ -176,13 +176,14 @@ def createCatchmentWEST(name:str, element:dict, timePatterns:dict, isEnd:bool=Tr
     
     return catchment
 
-def createInputWEST(name:str,input:str,tsInputs:'pd.DataFrame')->dict:
+def createInputWEST(name:str,input:str,tsInputs:'pd.DataFrame',isEnd:bool=True)->dict:
     """
         It creates a catchment WEST model (pattern, #people, flow per person) using as input the time series of one or more pipes. 
     Args:
         name (str): Name of the pipe section at which the model should be connected.
         input (str): Names of the time series/ pipes to be used as input
         tsInputs (pd.DataFrame): All time series to be converted to inputs in the complete WEST model 
+        isEnd (bool, optional): True if the catchment should be placed at the end of the pipe section, False otherwise. Defaults to True.
     Returns:
         dict: Catchment WEST model.
     """
@@ -208,7 +209,7 @@ def createInputWEST(name:str,input:str,tsInputs:'pd.DataFrame')->dict:
     
     #Aux attributes ------------------------------
     inputWEST[STW_C.FLOWRPERPERSON] = FLOW_PER_PERSON
-    inputWEST[STW_C.END] = True
+    inputWEST[STW_C.END] = isEnd
     
     return inputWEST
 
@@ -233,38 +234,45 @@ def getPathElements(dfs:list['pd.DataFrame'],elements:'pd.DataFrame', initialEle
     
     tankIndex = 1
     firstSection = True
+    isEnd = True
     
-    for df in dfs:  #Elements are in order from upstream to downstream
-
+    for i in range(len(dfs)):  #Elements are in order from upstream to downstream
+        df = dfs[i]
         dfClean = df[df[SWMM_C.LEN].notna() & (df[SWMM_C.LEN] != 0)].copy() #Removes elements with length zero (pumps, orifices or weirs)
          
         if dfClean.empty:
-            raise 
-
-        mostCommonShape = dfClean[SWMM_C.SHAPE].value_counts().idxmax()
-        name = dfClean.iloc[0,0] + STW_C.PIPE_SEC_NAM_SEP + dfClean.iloc[-1,0]
-        
-        #Creates and adds the pipe section to the list
-        sewerSect, n = createSewerWEST(dfClean,name,mostCommonShape,tankIndex) 
-        pipesSection.append(sewerSect)
-        tankIndex += n
+            if i < len(dfs) - 1:  # if there is a next df
+                next_df = dfs[i + 1]
+                name = next_df.iloc[0,0] + STW_C.PIPE_SEC_NAM_SEP + next_df.iloc[-1,0] #Takes the name of the next section
+                isEnd = False #puts the end catchments at the beggining
+            else:
+                prev_df = dfs[i - 1]
+                name = prev_df.iloc[0,0] + STW_C.PIPE_SEC_NAM_SEP + prev_df.iloc[-1,0] #Takes the name of the next section
+        else:
+            name = df.iloc[0,0] + STW_C.PIPE_SEC_NAM_SEP + df.iloc[-1,0] 
+            mostCommonShape = dfClean[SWMM_C.SHAPE].value_counts().idxmax()
+            
+            #Creates and adds the pipe section to the list
+            sewerSect, n = createSewerWEST(dfClean,name,mostCommonShape,tankIndex) 
+            pipesSection.append(sewerSect)
+            tankIndex += n
                 
         #Creates and adds a catchment and/or and dwf to their list if they are connected at the beggining of the path
         if firstSection and initialElements:
+
             catchment = createCatchmentWEST(name, initialElements,timePatterns,False) #Cathcments are named as the name the pipe section connected to
             catchments.append(catchment)
-            
             firstSection = False
          
         #Creates and adds a catchment and/or a dwf to their list if they are connected to the end part of the sewer section
-        pipeEvaluated = dfClean.iloc[-1][SWMM_C.NAME]
+        pipeEvaluated = df.iloc[-1][SWMM_C.NAME]
         if pipeEvaluated in elements.index:
             element = elements.loc[pipeEvaluated].copy()
-            catchments = createCatchmentsFromFlowElement(element, timePatterns, tSDischarging, catchments, name)
+            catchments = addCatchmentsFromFlowElement(element, timePatterns, tSDischarging, catchments, name, isEnd)
     
     if not dfs:
         element = elements.iloc[0].copy()
-        catchments = createCatchmentsFromFlowElement(element, timePatterns, tSDischarging, catchments, firstPipe)
+        catchments = addCatchmentsFromFlowElement(element, timePatterns, tSDischarging, catchments, firstPipe)
             
     print("----------------------------")
     print("Final number of pipe sections ", len(pipesSection))
@@ -275,10 +283,10 @@ def getPathElements(dfs:list['pd.DataFrame'],elements:'pd.DataFrame', initialEle
                             
     return pipesSection, catchments
 
-def createCatchmentsFromFlowElement(element:'pd.Serie', timePatterns:dict[list], tSDischarging:'pd.DataFrame', 
-                                   catchments:list[dict], pipeSectionName:str)->list[dict]:
+def addCatchmentsFromFlowElement(element:'pd.Serie', timePatterns:dict[list], tSDischarging:'pd.DataFrame', 
+                                   catchments:list[dict], pipeSectionName:str, isEnd:bool=True)->list[dict]:
     """
-        Looks for elements associated to the pipeEvaluated and if there are it adds new catchment models to the catchments list.
+        Looks for elements associated to the pipeSectionName and if there are it adds new catchment models to the catchments list.
     Args:
         elements (pd.DataFrame): Flow elements of the path.
         timePatterns (dict[list]): Time patterns of the network.
@@ -286,6 +294,7 @@ def createCatchmentsFromFlowElement(element:'pd.Serie', timePatterns:dict[list],
         catchments (list[dict]): List of catchments in which to add the new catchments models.
         pipeEvaluated (str): Name of the last pipe of the pipe section where the possible flow elements of the section were aggregated.
         pipeSectionName (str): Name of the pipe section being modelled (i.e.,"first pipe - last pipe")
+        isEnd (bool, optional): True if the catchment should be placed at the end of the pipe section, False otherwise. Defaults to True.
     Returns:
         list[dict]: list of catchment models updated with the models of the pipe section evaluated.
     """    
@@ -293,7 +302,7 @@ def createCatchmentsFromFlowElement(element:'pd.Serie', timePatterns:dict[list],
 
     #If the ts is not empty it creates an input object
     if tsInput is not None:
-        input = createInputWEST(pipeSectionName, tsInput, tSDischarging)
+        input = createInputWEST(pipeSectionName, tsInput, tSDischarging, isEnd)
         catchments.append(input)
     else:
         print("Connected pipe did not have flow")
@@ -303,7 +312,7 @@ def createCatchmentsFromFlowElement(element:'pd.Serie', timePatterns:dict[list],
                 
     #if any of the others values are different from zero or null then it creates a catchment object      
     if ~((element == 0.0) | element.isna()).all():
-        catchment = createCatchmentWEST(pipeSectionName, element, timePatterns) #Cathcments are named as the name the pipe section connected to
+        catchment = createCatchmentWEST(pipeSectionName, element, timePatterns, isEnd) #Cathcments are named as the name the pipe section connected to
         catchments.append(catchment)
 
     return catchments
