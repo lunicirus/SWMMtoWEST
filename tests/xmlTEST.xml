@@ -9,7 +9,7 @@
 <Props>
 <Prop Name="InstanceName" Value="Sew_1"/>
 <Prop Name="InstanceDisplayName" Value="DOM_7925 - DOM_602606(0)"/>
-<Prop Name="ClassName" Value="psvdmSewerTank_Classplus_decay"/>
+<Prop Name="ClassName" Value="ClassDefault"/>
 <Prop Name="Desc" Value="Sewer"/>
 <Prop Name="Unit" Value=""/>
 <Prop Name="DefaultValue" Value=""/>
@@ -33,7 +33,7 @@
 <Props>
 <Prop Name="InstanceName" Value="Sew_2"/>
 <Prop Name="InstanceDisplayName" Value="DOM_7925 - DOM_602606(1)"/>
-<Prop Name="ClassName" Value="psvdmSewerTank_Classplus_decay"/>
+<Prop Name="ClassName" Value="ClassDefault"/>
 <Prop Name="Desc" Value="Sewer"/>
 <Prop Name="Unit" Value=""/>
 <Prop Name="DefaultValue" Value=""/>
@@ -57,7 +57,7 @@
 <Props>
 <Prop Name="InstanceName" Value="Sew_3"/>
 <Prop Name="InstanceDisplayName" Value="DOM_7925 - DOM_602606(2)"/>
-<Prop Name="ClassName" Value="psvdmSewerTank_Classplus_decay"/>
+<Prop Name="ClassName" Value="ClassDefault"/>
 <Prop Name="Desc" Value="Sewer"/>
 <Prop Name="Unit" Value=""/>
 <Prop Name="DefaultValue" Value=""/>
@@ -81,7 +81,7 @@
 <Props>
 <Prop Name="InstanceName" Value="Catchment_1"/>
 <Prop Name="InstanceDisplayName" Value="DOM_7925 - DOM_602606"/>
-<Prop Name="ClassName" Value="Catchment_NoRetention_IndirectStormwater"/>
+<Prop Name="ClassName" Value="ClassDefault"/>
 <Prop Name="Desc" Value="Catchment"/>
 <Prop Name="Unit" Value=""/>
 <Prop Name="DefaultValue" Value=""/>
@@ -105,7 +105,7 @@
 <Props>
 <Prop Name="InstanceName" Value="Catchment_2"/>
 <Prop Name="InstanceDisplayName" Value="DOM_7925 - DOM_602606[input]"/>
-<Prop Name="ClassName" Value="Catchment_NoRetention_IndirectStormwater"/>
+<Prop Name="ClassName" Value="ClassDefault"/>
 <Prop Name="Desc" Value="Catchment"/>
 <Prop Name="Unit" Value=""/>
 <Prop Name="DefaultValue" Value=""/>
@@ -129,7 +129,7 @@
 <Props>
 <Prop Name="InstanceName" Value="Connector_info_1"/>
 <Prop Name="InstanceDisplayName" Value="Connector_info_1"/>
-<Prop Name="ClassName" Value="Kosim1ToPSVDM_curve_tracerflow_ClassplusViral"/>
+<Prop Name="ClassName" Value="ClassDefault"/>
 <Prop Name="Desc" Value=""/>
 <Prop Name="Unit" Value=""/>
 <Prop Name="DefaultValue" Value=""/>
@@ -153,7 +153,7 @@
 <Props>
 <Prop Name="InstanceName" Value="Well_1"/>
 <Prop Name="InstanceDisplayName" Value="Well_1"/>
-<Prop Name="ClassName" Value="psvdmTwoCombiner"/>
+<Prop Name="ClassName" Value="ClassDefault"/>
 <Prop Name="Desc" Value="Two combiner"/>
 <Prop Name="Unit" Value=""/>
 <Prop Name="DefaultValue" Value=""/>
