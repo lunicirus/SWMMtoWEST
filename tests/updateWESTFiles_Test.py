@@ -13,6 +13,15 @@ def sample_Links():
     return linksXML, tree
 
 @pytest.fixture
+def sample_Submodel():
+
+    tree = ET.parse('tests/xmlTEST.xml')
+    root = tree.getroot()  
+    submodel = root.findall('.//SubModel')[0]
+    
+    return submodel, tree
+
+@pytest.fixture
 def sample_Elements():
 
     tree = ET.parse('tests/xmlTESTShortConf.xml')
@@ -165,6 +174,34 @@ def checkLink(xml,linkName,fromM,toM,connName):
     assert linkC.find(".Props/Prop[@Name='Data'][@Value='ConnectionName=&quot;"+ connName +"&quot; ConnectionType=&quot;WaterLine&quot;']") is not None 
 
 #---------------------------Utils-------------------------
+def test_setModelClass(sample_Submodel):
+
+    submodel=sample_Submodel[0]
+    tree = sample_Submodel[1]
+    uf.setModelClass(submodel, "NewModelClass")
+
+    assert submodel.find("./Props/Prop[@Name='ClassName']").get('Value') == "NewModelClass"
+    
+    #ET.indent(tree, space="\t", level=0)
+    #tree.write('tests/xmlTEST_Mod1.xml')
+
+def test_setDisplayName(sample_Submodel):
+
+    submodel=sample_Submodel[0]
+    tree = sample_Submodel[1]
+    uf.setDisplayName(submodel, "NewName")
+
+    assert submodel.find("./Props/Prop[@Name='InstanceDisplayName']").get('Value') == "NewName"
+    
+    #ET.indent(tree, space="\t", level=0)
+    #tree.write('tests/xmlTEST_Mod1.xml')
+
+def test_getInstanceName(sample_Submodel):
+
+    submodel=sample_Submodel[0]
+    insName = uf.getInstanceName(submodel)
+
+    assert insName == "Sew_1"
 
 def test_connectCatchment(sample_Links):
 
@@ -260,7 +297,7 @@ def test_createLinks_conf1(sample_Elements,names_Dict_Conf,elements):
     sewerSections = elements[0]
     catchments = elements[1]
 
-    result_root, lastElement, linki = uf.createLinks(root, names_Dict_Conf, catchments, sewerSections, None, 1)
+    result_root, lastElement, linki = uf.createPathLinks(root, names_Dict_Conf, catchments, sewerSections, None, 1)
 
     #ET.indent(tree, space="\t", level=0)
     #tree.write('tests/xmlTEST_Mod1.xml')
@@ -309,7 +346,7 @@ def test_createLinks_conf2(sample_Elements,names_Dict_Conf1,elements1):
     sewerSections = elements1[0]
     catchments = elements1[1]
 
-    result_root, lastElement, linki  = uf.createLinks(root, names_Dict_Conf1, catchments, sewerSections,None,1)
+    result_root, lastElement, linki  = uf.createPathLinks(root, names_Dict_Conf1, catchments, sewerSections,None,1)
 
     ET.indent(tree, space="\t", level=0)
     tree.write('tests/xmlTEST_Mod1.xml')
@@ -355,7 +392,7 @@ def test_createLinks_conf3(sample_Elements,names_Dict_Conf2,elements2):
     sewerSections = elements2[0]
     catchments = elements2[1]
 
-    result_root, lastElement, linki  = uf.createLinks(root, names_Dict_Conf2, catchments, sewerSections,None,1)
+    result_root, lastElement, linki  = uf.createPathLinks(root, names_Dict_Conf2, catchments, sewerSections,None,1)
 
     ET.indent(tree, space="\t", level=0)
     tree.write('tests/xmlTEST_Mod1.xml')
@@ -411,4 +448,4 @@ def test_getLastTankModelName_exception(pipeSectionsAndDict):
         uf.getLastTankModelName(pipeSectionsAndDict[0], lastPipe, pipeSectionsAndDict[1])
 
     assert "The tank name was not found" in str(excinfo.value) # Assert the exception message
-
+  
