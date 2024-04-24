@@ -60,6 +60,8 @@ XML_FROM = 'From'
 XML_TO = 'To'
 XML_TYPE = 'Type'
 XML_DATA = 'Data'
+XML_INFLOW_SUFFIX1= '1'
+XML_INFLOW_SUFFIX2 = '2'
 
 #Utils for the links
 XML_SUBMOD = 'sub_models'

@@ -35,6 +35,9 @@ INPUT_CATCHMENT = "[input]"
 BEFORE_CATCHMENT = "[previous]"
 SECTION_CATCHMENT = "(Catch)"
 
+VEL_MIN_CONN = "VelMinima"
+VEL_CLASSES_CONN = "VelClasses"
+
 CONNECTED_PIPE_SUFFIX = '_dischargingPipe'
 TRUNK_PIPE_SUFFIX = '_trunkPipe'
 TRUNK_PIPE_NAME = 'Name_trunkPipe'
@@ -47,6 +50,11 @@ WCATCHMENTS = 'WESTCatchments'
 PERC_LIM_TO_BRANCH = 0.2 # Percentage from the trunk flow for a connecting pipe to be considered as a relevant branch
 
 # DIST_TO_LEAF = "DistanceToOriginLeaf"
+
+SEWERS = 'Sewers'
+CATCHMENTS = 'Catchments'
+CONNECTORS = 'Connectors'
+COMBINERS = 'Combiners'
 
 LINK_NAME = 'LinkName'
 CONN_NAME = 'ConnectionName'
