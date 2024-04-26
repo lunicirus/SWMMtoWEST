@@ -620,14 +620,14 @@ def getLastTankModelName(pipeSections:list[dict], lastPipe:str, namesDict:dict[s
 
     return nameModel
     
-def updateWESTLayoutFile(layoutXML:str, layoutXML_MOD:str, modelClasses:dict[str], trunkModels:list[list[dict]],
+def updateWESTLayoutFile(layoutXMLPath:str, layoutXMLPath_MOD:str, modelClasses:dict[str], trunkModels:list[list[dict]],
                          branchesModels:dict[dict[list[dict]]], connAttributes:dict):
     """
         Updates the classes and atributes of all elements on a network, creating links between all elements.
     Args:
-        layoutXML (str): Path to the XML file with the layout of the WEST model.
-        layoutXML_MOD (str): Path to where the modified layout file will be saved.
-        modelClasses (dict[str]): Classes to be set to each type of model. Using Constants as keys e.g. SEWER_CLASS, CATCH_CLASS.
+        layoutXMLPath (str): Path to the XML file with the layout of the WEST model.
+        layoutXMLPath_MOD (str): Path to where the modified layout file will be saved.
+        modelClasses (dict[str]): Classes to be set to each type of model. Using Constants as keys e.g. STW_C.SEWER_CLASS, STW_C.CATCH_CLASS.
         trunkModels (list[list[dict]]): Two lists reprenting the trunk of the network. One list has all sewer sections (as dictionaries) and the other all catchments. 
         branchesModels (dict[dict[list[dict]]]): The keys are the name of the pipe that connects the branch and the trunk, the values are the attributes of the elements
                                            in the branch. Each branch dictionary has two elements one list of sewers, one list of the catchments (CONSTANTS as keys).
@@ -637,7 +637,7 @@ def updateWESTLayoutFile(layoutXML:str, layoutXML_MOD:str, modelClasses:dict[str
     trunkPipeSections = trunkModels[0]
     iLink, iCatch, iComb = 1, 1, 1
 
-    tree = ET.parse(layoutXML) # Read the XML file
+    tree = ET.parse(layoutXMLPath) # Read the XML file
     root = tree.getroot()  
     linksXML = root.find('.//Links')
 
@@ -672,5 +672,5 @@ def updateWESTLayoutFile(layoutXML:str, layoutXML_MOD:str, modelClasses:dict[str
 
     # Save the modified XML to a new file
     ET.indent(tree, space="\t", level=0)
-    tree.write(layoutXML_MOD)
+    tree.write(layoutXMLPath_MOD)
     
