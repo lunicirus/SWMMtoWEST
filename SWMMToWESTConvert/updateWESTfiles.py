@@ -205,7 +205,7 @@ def modifyCatchmentModel(root:ET.Element, quantities:ET.Element, XMLCatchment:ET
     Returns:
         tuple[ET.Element,ET.Element]: Updated root and quantities elements of the WEST's .Layout.xml file.
     """ 
-    catchmentName = props[STW_C.NAME]
+    catchmentName = props[STW_C.NAME_CATCH]
     setDisplayName(XMLCatchment, catchmentName) 
     namesDict[catchmentName] = XMLCatchment.attrib["Name"]
 
