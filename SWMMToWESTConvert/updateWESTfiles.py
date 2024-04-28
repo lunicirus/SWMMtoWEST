@@ -214,23 +214,31 @@ def modifyCatchmentModel(root:ET.Element, quantities:ET.Element, XMLCatchment:ET
     #For simple values
     for P,XMLval in zip(CATCH_DICT_SET,CATCH_XML_SET):
 
-        val = props[P]
+        if P in props:
+            val = props[P]
 
-        if ((val is not None) & (val != 0)):
-            quantities,root = createsOrModifyQuantity(val,instName,XMLval,quantities,root)
-        elif ((val is None) | (val == 0))  & ((P == STW_C.AREA) | (P == STW_C.N_PEOPLE)): #If no values are given the 
-            val = 0 #Replace with zero in cas is None
-            quantities,root = createsOrModifyQuantity(val,instName,XMLval,quantities,root)
+            if ((val is not None) & (val != 0)):
+                quantities,root = createsOrModifyQuantity(val,instName,XMLval,quantities,root)
+            elif ((val is None) | (val == 0))  & ((P == STW_C.AREA) | (P == STW_C.N_PEOPLE)): #If no values are given the 
+                val = 0 #Replace with zero in cas is None
+                quantities,root = createsOrModifyQuantity(val,instName,XMLval,quantities,root)
+        else:
+            raise KeyError("The property '{}' should exist in all catchment dictionaries.".format(P))
+
             
     #For the time pattern
-    if (props[STW_C.TIMEPATTERN] is not None):
-        for h,vh in zip([f"{hour:02})" for hour in range(0,24)],props[STW_C.TIMEPATTERN]):
+    if STW_C.TIMEPATTERN in props:
+        if (props[STW_C.TIMEPATTERN] is not None):
+            for h,vh in zip([f"{hour:02})" for hour in range(0,24)],props[STW_C.TIMEPATTERN]):
 
-            quantities,root = createsOrModifyQuantity(vh,instName,W_C.XML_DWF_CUSTOMFLOWPATTERN + h,quantities,root)
-    
+                quantities,root = createsOrModifyQuantity(vh,instName,W_C.XML_DWF_CUSTOMFLOWPATTERN + h,quantities,root)
+    else:
+        raise KeyError("The property '{}' should exist in all catchment dictionaries.".format(STW_C.TIMEPATTERN))
+
+
     return root, quantities
 
-def modifyConnectorModel(root:ET.Element, quantities:ET.Element, XMLConnector:ET.Element, props:list[dict], namesDict:dict[str])->tuple[ET.Element,ET.Element,str]:
+def modifyConnectorModel(root:ET.Element, quantities:ET.Element, XMLConnector:ET.Element, props:list[dict], namesDict:dict[str])->tuple[ET.Element,ET.Element]:
     """
         Modifies the properties of an existent model type CONNECTOR in a WEST project.
         CONNECTOR are usually placed between Catchment and sewer models to convert the data type.
@@ -240,14 +248,18 @@ def modifyConnectorModel(root:ET.Element, quantities:ET.Element, XMLConnector:ET
         props (list[dict]): Properties of the connector to be set.
         namesDict (dict[str]): Dictionary of names between the display name and the model name. keys are the display names.
     Returns:
-        tuple[ET.Element,ET.Element,str]: Updated root and quantities elements of the WEST's .Layout.xml file. InstanceName of the model 
+        tuple[ET.Element,ET.Element]: Updated root and quantities elements of the WEST's .Layout.xml file.
     """ 
     instName = getInstanceName(XMLConnector)
     namesDict[instName] = XMLConnector.attrib["Name"] #In this case the instance name and display name are the same
 
     nClasses = 10
-    valMin = props[STW_C.VEL_MIN_CONN]
-    velTSS = props[STW_C.VEL_CLASSES_CONN]
+
+    if (STW_C.VEL_MIN_CONN in props) and (STW_C.VEL_CLASSES_CONN in props):
+        valMin = props[STW_C.VEL_MIN_CONN]
+        velTSS = props[STW_C.VEL_CLASSES_CONN]
+    else:
+        raise KeyError("The property '{}' should exist in all connector dictionaries.".format(STW_C.TIMEPATTERN))
 
     if (valMin is not None):
         quantities, root = createsOrModifyQuantity(valMin,instName,W_C.XML_CONN_VELMINCLASS,quantities,root)
@@ -256,7 +268,7 @@ def modifyConnectorModel(root:ET.Element, quantities:ET.Element, XMLConnector:ET
         velName = W_C.XML_CONN_VELCLASS + '(C'+ str(vi) +')'
         quantities, root = createsOrModifyQuantity(vel,instName,velName,quantities,root)
             
-    return root, quantities, instName
+    return root, quantities
 
 #-------------Create Links ----------------------------------------------
 def createCatchmentLinksXML(linksXML:ET.Element,catchmentNames:dict[str],connectorNames:dict[str],combNames:dict[str],prevElement:str)->ET.Element:
@@ -555,7 +567,7 @@ def setClassAndAddToDictionary(modelClass:str, XMLElements:dict[ET.Element], sub
     XMLElements[iElement] = submodel
 
 def setPathElementsProp(root:ET.Element, attrSewer:list[dict], attrCatch:list[dict], attrConn:list[dict],
-                        XMLsByType: dict[dict[ET.Element]], iCatch:int, iComb:int)->tuple[ET.Element,dict[str],int]:                      
+                        XMLsByType: dict[dict[ET.Element]], iCatch:int, iComb:int)->tuple[ET.Element,dict[str],int,int]:                      
     """
         Set the properties and classes of all the elements of a path.
     Args:
@@ -568,7 +580,8 @@ def setPathElementsProp(root:ET.Element, attrSewer:list[dict], attrCatch:list[di
         iCatch (int): Index of the next catchment to set the properties to.
         iComb (int): Index of the next combiner to be connected to the network.
     Returns:
-        tuple[ET.Element,dict[str],int]: Updated root element of the xml file. Dictionary of names between display name (key) and model name. Updated index of catchments
+        tuple[ET.Element, dict[str], int, int]: Updated root element of the xml file. Dictionary of names between display name (key) and 
+                                                model name. Updated index of catchments and combiners.
     """    
     quantities = root.find('.//Quantities')
 
@@ -651,7 +664,7 @@ def updateWESTLayoutFile(layoutXMLPath:str, layoutXMLPath_MOD:str, modelClasses:
 
         # Adds the properties of the elements within the branch
         branch = branchesModels[br]
-        root, namesDict, iCatchN = setPathElementsProp(root, branch[STW_C.PATH], branch[STW_C.WCATCHMENTS], connAttributes, XMLsByType, iCatch, iComb)
+        root, namesDict, iCatchN, iComb = setPathElementsProp(root, branch[STW_C.PATH], branch[STW_C.WCATCHMENTS], connAttributes, XMLsByType, iCatch, iComb)
         
         #Create the links
         linksXML, lastPathElement, iLink, iCatch, iComb = createPathLinks(linksXML, namesDict, branch[STW_C.WCATCHMENTS], branch[STW_C.PATH],  iLink, iCatch, iComb)

@@ -165,8 +165,9 @@ def pipeSectionsAndDict():
 
 @pytest.fixture(scope='session')
 def initialXML():
-
-    tree = ET.parse('tests/xmlTESTLongConf.xml')
+    
+    XMLfilePath = 'tests/xmlTESTLongConf.xml'
+    tree = ET.parse(XMLfilePath)
     root = tree.getroot()
 
     iconIndex = 1
@@ -177,7 +178,7 @@ def initialXML():
         props = ET.SubElement(submodel, 'Props')
         ET.SubElement(props, 'Prop', {'Name': f'InstanceName', 'Value': f'Sew_{i}'})
         ET.SubElement(props, 'Prop', {'Name': f'InstanceDisplayName', 'Value': 'PipeSectionX'})
-        ET.SubElement(props, 'Prop', {'Name': f'ClassName', 'Value': 'SewerClass'})
+        ET.SubElement(props, 'Prop', {'Name': f'ClassName', 'Value': 'genericClass'})
         ET.SubElement(props, 'Prop', {'Name': f'Desc', 'Value': 'Sewer'})
         ET.SubElement(props, 'Prop', {'Name': f'Unit', 'Value': ''})
         favorites = ET.SubElement(submodel, 'Favorites')
@@ -190,7 +191,7 @@ def initialXML():
         props = ET.SubElement(submodel, 'Props')
         ET.SubElement(props, 'Prop', {'Name': f'InstanceName', 'Value': f'Catchment_{i}'})
         ET.SubElement(props, 'Prop', {'Name': f'InstanceDisplayName', 'Value': 'PipeSectionX(Catch)'})
-        ET.SubElement(props, 'Prop', {'Name': f'ClassName', 'Value': 'CatchmentClass'})
+        ET.SubElement(props, 'Prop', {'Name': f'ClassName', 'Value': 'genericClass'})
         ET.SubElement(props, 'Prop', {'Name': f'Desc', 'Value': 'Catchment'})
         ET.SubElement(props, 'Prop', {'Name': f'Unit', 'Value': ''})
         favorites = ET.SubElement(submodel, 'Favorites')
@@ -203,7 +204,7 @@ def initialXML():
         props = ET.SubElement(submodel, 'Props')
         ET.SubElement(props, 'Prop', {'Name': f'InstanceName', 'Value': f'Connector_info_{i}'})
         ET.SubElement(props, 'Prop', {'Name': f'InstanceDisplayName', 'Value': f'Connector_info_{i}'})
-        ET.SubElement(props, 'Prop', {'Name': f'ClassName', 'Value': 'ConnectorClass'})
+        ET.SubElement(props, 'Prop', {'Name': f'ClassName', 'Value': 'genericClass'})
         ET.SubElement(props, 'Prop', {'Name': f'Desc', 'Value': 'Connector'})
         ET.SubElement(props, 'Prop', {'Name': f'Unit', 'Value': ''})
         favorites = ET.SubElement(submodel, 'Favorites')
@@ -216,7 +217,7 @@ def initialXML():
         props = ET.SubElement(submodel, 'Props')
         ET.SubElement(props, 'Prop', {'Name': f'InstanceName', 'Value': f'Well_{i}'})
         ET.SubElement(props, 'Prop', {'Name': f'InstanceDisplayName', 'Value': f'Well_{i}'})
-        ET.SubElement(props, 'Prop', {'Name': f'ClassName', 'Value': 'CombinerClass'})
+        ET.SubElement(props, 'Prop', {'Name': f'ClassName', 'Value': 'genericClass'})
         ET.SubElement(props, 'Prop', {'Name': f'Desc', 'Value': 'Two combiner'})
         ET.SubElement(props, 'Prop', {'Name': f'Unit', 'Value': ''})
         favorites = ET.SubElement(submodel, 'Favorites')
@@ -227,8 +228,9 @@ def initialXML():
     ET.indent(tree, space="\t", level=0)
     tree.write('tests/xmlTESTLongConf.xml', encoding='utf-8', xml_declaration=True)
 
-    return ET.parse('tests/xmlTESTLongConf.xml')
+    return XMLfilePath
 
+@pytest.fixture(scope='session')
 def dictForWEST():
 
     listTrunk = [] 
@@ -285,12 +287,24 @@ def dictForWEST():
 
     return listTrunk, branches, connectors
 
+@pytest.fixture(scope='session')
+def modelClasses():
+
+    modelClasses = {'Sewers Class': 'ClassTEST_SEW',
+                    'Catchments Class': 'ClassTEST_CATH',
+                    'Connectors Class': 'ClassTEST_CON',
+                    'Two Way Combiners Class': 'ClassTEST_COMB'}
+    
+    return modelClasses
+
 
 #---------------------------Utils-------------------------¸
 def createMockSewerDict(name: str, valArea: str, listIndexes: list[int]):
 
     ssDict = {'PipeName': name,
               'AreaTank': valArea,
+              'Volmax': 10,
+              'k':0.2,
               'tanksIndexes': listIndexes}
     
     return ssDict
@@ -299,13 +313,18 @@ def createMockCatchDict(name: str, valArea: str, isEnd: bool):
 
     ssDict = {'CatchmentName': name,
               'AreaCatchment': valArea,
+              'NumberPeople': 300,
+              'FlowPerPerson': 40,
+              'DirectFBaseline':5,
+              'TimePattern':None,
               'EndNode': isEnd}
     
     return ssDict
 
 def createMockConnector(velMin: int):
 
-    conDict = {'VelMinima': 18}
+    conDict = {'VelMinima': 60,
+               'VelClasses':[7,8,9,10,11,12,13,14,15,16]}
     return conDict
 
 def checkLink(xml:ET.Element,linkName:str,fromM:str,toM:str,connName:str,inflowNumber:str=''):
@@ -356,7 +375,7 @@ def test_setClassAndAddToDictionary(sample_Submodel):
     uf.setClassAndAddToDictionary("NewModelClass1", XMLDictEle, submodel, "Sew_")
 
     # Assert that the model class has been set correctly
-    assert submodel.find("./Props/Prop[@Name='ClassName']").get('Value') == "NewModelClass1"
+    assert submodel.find("./Props/Prop[@Name='ClassName']").get('Value') == "NewModelClass1", f"The class was not set correctly"
 
     # Assert that the submodel has been added to the dictionary with the correct key
     assert len(XMLDictEle) == 1
@@ -559,7 +578,7 @@ def test_createLinks_conf3(sample_Elements,names_Dict_Conf2,elements2):
     #tree.write('tests/xmlTEST_Mod1.xml')
 
     assert isinstance(result_links, ET.Element) # Assert the result
-    assert len(list(result_links)) == 24, "Incorrect final number of links"
+    assert len(list(result_links)) == 24, f"Incorrect final number of links"
     
     checkLink(links_element,"Link1","Icon1","Icon21","CustomOrthogonalLine1","1") 
 
@@ -608,46 +627,57 @@ def test_getLastTankModelName_exception(pipeSectionsAndDict):
 
     assert "The tank name was not found" in str(excinfo.value) # Assert the exception message
 
-def test_updateWESTLayoutFile_conf1(initialXML):
+def test_getModelsByTypeAndSetClasses(initialXML,modelClasses):
 
-    tree = initialXML
+    tree = ET.parse(initialXML)
+    root = tree.getroot()
 
-    result_links, lastElement, linki, catchi, comb1 = uf.createPathLinks(linksEle, names_Dict_Conf, catchments, sewerSections, 1, 1, 1)
+    allXMLSubmodels = uf.getModelsByTypeAndSetClasses(root,modelClasses,3,24)
+
+    keysXMLModels = ['Sewers','Catchments','Connectors','Combiners']
+    keysModelClasses = ['Sewers Class', 'Catchments Class', 'Connectors Class', 'Two Way Combiners Class']
 
     #ET.indent(tree, space="\t", level=0)
-    #tree.write('tests/xmlTEST_Mod1.xml')
+    #tree.write('tests/xmlTEST_RESUKT.xml')
 
-    assert isinstance(result_links, ET.Element) # Assert the result
-    assert len(list(result_links)) == 24, "Incorrect final number of links"
+    for typeM, classType, numPerType in zip(keysXMLModels,keysModelClasses,[24,7,7,10]):
+        
+        modelsElement = allXMLSubmodels[typeM]
+
+        assert len(modelsElement) == numPerType, f"Incorrect final number of {typeM}"
+
+        for key in modelsElement:
+            submodel= modelsElement[key]
+            assert submodel.find("./Props/Prop[@Name='ClassName']").get('Value') == modelClasses[classType], f"The class was not set correctly for {submodel}"
+
+
+def test_setPathElementsProp(initialXML,modelClasses,dictForWEST):
+
+    tree = ET.parse(initialXML)
+    root = tree.getroot()
+
     
-    checkLink(result_links,"Link1","Icon11","Icon16","CustomOrthogonalLine1") #Catch 1 to Conn 1
-    checkLink(result_links,"Link2","Icon16","Icon21","CustomOrthogonalLine2","2") #Conn 1 to Comb 1
-    checkLink(result_links,"Link3","Icon21","Icon1","CustomOrthogonalLine3") #Comb 1 to sewer 1
+    allXMLSubmodels = uf.getModelsByTypeAndSetClasses(root,modelClasses,3,24)
+    root, namesDict, iCatchN, iCombN = uf. setPathElementsProp(root, dictForWEST[0][0], dictForWEST[0][1], dictForWEST[2], allXMLSubmodels, 1, 1)
 
-    checkLink(result_links,"Link4","Icon1","Icon2","CustomOrthogonalLine4") #Sew 1 to sew 2
-    checkLink(result_links,"Link5","Icon2","Icon3","CustomOrthogonalLine5")
-    checkLink(result_links,"Link6","Icon3","Icon4","CustomOrthogonalLine6")
+
+        
+
+#def test_updateWESTLayoutFile(initialXML, dictForWEST,modelClasses):
+
+    #TODO
+    #initialXMLMOD = 'tests/updateWESTLayoutFileTEST_Result.xml'
+
     
-    checkLink(result_links,"Link7","Icon4","Icon22","CustomOrthogonalLine7","1") #Sewer 4 to comb 2
-    checkLink(result_links,"Link8","Icon12","Icon17","CustomOrthogonalLine8") #catch 2 to conn 2
-    checkLink(result_links,"Link9","Icon17","Icon22","CustomOrthogonalLine9","2") #Conn 2 to comb 2
-    checkLink(result_links,"Link10","Icon22","Icon5","CustomOrthogonalLine10") #Comb 2 to sew 5
 
-    checkLink(result_links,"Link11","Icon5","Icon6","CustomOrthogonalLine11") #sew5 to sew 6
-    checkLink(result_links,"Link12","Icon6","Icon7","CustomOrthogonalLine12")
 
-    checkLink(result_links,"Link13","Icon7","Icon23","CustomOrthogonalLine13","1") #sew 7 to comb 3
-    checkLink(result_links,"Link14","Icon13","Icon18","CustomOrthogonalLine14") #catch 3 to conn 3
-    checkLink(result_links,"Link15","Icon18","Icon23","CustomOrthogonalLine15","2") #conn 3 to comb 3
+    #uf.updateWESTLayoutFile(initialXML, initialXMLMOD, modelClasses, dictForWEST[0],dictForWEST[1], dictForWEST[2])
 
-    checkLink(result_links,"Link16","Icon23","Icon24","CustomOrthogonalLine16","1") #comb 3 to comb 4
-    checkLink(result_links,"Link17","Icon14","Icon19","CustomOrthogonalLine17") #catch 4 to conn 4
-    checkLink(result_links,"Link18","Icon19","Icon24","CustomOrthogonalLine18","2") #conn 4 to comb 4
-    checkLink(result_links,"Link19","Icon24","Icon8","CustomOrthogonalLine19") #comb 4 to sew 8
+   
+
+    #assert isinstance(result_links, ET.Element) # Assert the result
+    #assert len(list(result_links)) == 24, "Incorrect final number of links"
     
-    checkLink(result_links,"Link20","Icon8","Icon9","CustomOrthogonalLine20") #sew 8 to sew 9
-    checkLink(result_links,"Link21","Icon9","Icon10","CustomOrthogonalLine21")
+    #checkLink(result_links,"Link1","Icon11","Icon16","CustomOrthogonalLine1") #Catch 1 to Conn 1
 
-    checkLink(result_links,"Link22","Icon10","Icon25","CustomOrthogonalLine22","1") #sew 10 to comb 5
-    checkLink(result_links,"Link23","Icon15","Icon20","CustomOrthogonalLine23") #catch 5 to conn 5
-    checkLink(result_links,"Link24","Icon20","Icon25","CustomOrthogonalLine24","2") #conn 5 to comb 5
+   
