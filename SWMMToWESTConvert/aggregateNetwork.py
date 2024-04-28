@@ -451,5 +451,5 @@ def aggregateAndModelNetwork(networkInp:str, idWRRF:str, nodeMeasurementFlow:lis
     branches, trunkModels, trunk = getTrunkModels(networkElements[STW_C.LINKS], networkLookPoints, outfile, nodeMeasurementFlow, networkElements[STW_C.T_PATTERNS], idWRRF, idTrunkIni)  
     branchesModels = getBranchesModels(networkElements[STW_C.LINKS], networkLookPoints, outfile, nodeMeasurementFlow, networkElements[STW_C.T_PATTERNS], branches, trunk)
 
-    return trunkModels,branchesModels
+    return trunkModels, branchesModels
 

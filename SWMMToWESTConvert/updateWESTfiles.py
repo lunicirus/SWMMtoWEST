@@ -182,11 +182,14 @@ def modifySewerModel(root:ET.Element, quantities:ET.Element, XMLSewers:dict[ET.E
         namesDict[nameSewer] = XMLSewerTank.attrib["Name"] 
 
         for P, XMLval in zip(SEW_DICT_SET,SEW_XML_SET):
-                
-            val = sewerSection[P]
+            
+            if P in sewerSection:
+                val = sewerSection[P]
 
-            if ((val is not None) & (val != 0)):
-                quantities,root = createsOrModifyQuantity(val,instName,XMLval,quantities,root) 
+                if ((val is not None) & (val != 0)):
+                    quantities,root = createsOrModifyQuantity(val,instName,XMLval,quantities,root) 
+            else:
+                raise KeyError("The property '{}' should exist in all sewer dictionaries.".format(P))
                 
     return root, quantities
 
@@ -653,7 +656,7 @@ def updateWESTLayoutFile(layoutXMLPath:str, layoutXMLPath_MOD:str, modelClasses:
         #Create the links
         linksXML, lastPathElement, iLink, iCatch, iComb = createPathLinks(linksXML, namesDict, branch[STW_C.WCATCHMENTS], branch[STW_C.PATH],  iLink, iCatch, iComb)
         
-        linksXML, iLink, combiner = connectBranchToCombiner(linksXML, lastPathElement, iLink, iComb)
+        #linksXML, iLink, combiner = connectBranchToCombiner(linksXML, lastPathElement, iLink, iComb)
         
         #eleToConnect = getLastTankModelName(trunkPipeSections, br, namesDict)
         #br = 
@@ -664,7 +667,7 @@ def updateWESTLayoutFile(layoutXMLPath:str, layoutXMLPath_MOD:str, modelClasses:
 
 
     # Adds the properties of the elements within the trunk
-    root, namesDict = setPathElementsProp(root, modelClasses, trunkPipeSections, trunkModels[1], connAttributes)
+    root, namesDict = setPathElementsProp(root, trunkPipeSections, trunkModels[1], connAttributes)
     #Create the links of the trunk
     linksXML, lastPathElement, iLink = createPathLinks(linksXML, namesDict, branch[STW_C.WCATCHMENTS], branch[STW_C.PATH],  iLink)
         
