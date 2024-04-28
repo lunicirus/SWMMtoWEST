@@ -166,9 +166,9 @@ def pipeSectionsAndDict():
 @pytest.fixture(scope='session')
 def initialXML():
     
-    XMLfilePath = 'tests/xmlTESTLongConf.xml'
-    tree = ET.parse(XMLfilePath)
-    root = tree.getroot()
+    XMLfilePath = 'tests/xmlTESTLongConfM.xml'
+    tree = ET.parse('tests/xmlTESTBlank.xml') 
+    submodels = tree.getroot().find('.//SubModels')
 
     iconIndex = 1
 
@@ -182,7 +182,7 @@ def initialXML():
         ET.SubElement(props, 'Prop', {'Name': f'Desc', 'Value': 'Sewer'})
         ET.SubElement(props, 'Prop', {'Name': f'Unit', 'Value': ''})
         favorites = ET.SubElement(submodel, 'Favorites')
-        root.append(submodel)
+        submodels.append(submodel)
         iconIndex += 1
 
     #Add the catchments
@@ -195,7 +195,7 @@ def initialXML():
         ET.SubElement(props, 'Prop', {'Name': f'Desc', 'Value': 'Catchment'})
         ET.SubElement(props, 'Prop', {'Name': f'Unit', 'Value': ''})
         favorites = ET.SubElement(submodel, 'Favorites')
-        root.append(submodel)
+        submodels.append(submodel)
         iconIndex += 1
 
     #Add the connectors
@@ -208,7 +208,7 @@ def initialXML():
         ET.SubElement(props, 'Prop', {'Name': f'Desc', 'Value': 'Connector'})
         ET.SubElement(props, 'Prop', {'Name': f'Unit', 'Value': ''})
         favorites = ET.SubElement(submodel, 'Favorites')
-        root.append(submodel)
+        submodels.append(submodel)
         iconIndex += 1
     
     #Add the combiners
@@ -221,12 +221,12 @@ def initialXML():
         ET.SubElement(props, 'Prop', {'Name': f'Desc', 'Value': 'Two combiner'})
         ET.SubElement(props, 'Prop', {'Name': f'Unit', 'Value': ''})
         favorites = ET.SubElement(submodel, 'Favorites')
-        root.append(submodel)
+        submodels.append(submodel)
         iconIndex += 1
 
     # Write back to the XML file
     ET.indent(tree, space="\t", level=0)
-    tree.write('tests/xmlTESTLongConf.xml', encoding='utf-8', xml_declaration=True)
+    tree.write(XMLfilePath, encoding='utf-8', xml_declaration=True)
 
     return XMLfilePath
 
@@ -237,9 +237,9 @@ def dictForWEST():
     listSewersTrunk = []
     listCatchTrunk = []
     
-    for s, tanks in zip(range(1,5),[[1,2,3,4],[5,6,7,8],[9,10],[11,12],[13]]):
+    for s, tanks in zip(range(1,6),[[1,2,3,4],[5,6,7,8],[9,10],[11,12],[13]]):
         name = 'pipe' + str(s) + '00' + ' - ' + 'pipe' + str(s) + '01' 
-        valArea = str(s+10)
+        valArea = str(s + 10)
         sew = createMockSewerDict(name, valArea, tanks)
         listSewersTrunk.append(sew)
 
@@ -323,9 +323,17 @@ def createMockCatchDict(name: str, valArea: str, isEnd: bool):
 
 def createMockConnector(velMin: int):
 
-    conDict = {'VelMinima': 60,
-               'VelClasses':[7,8,9,10,11,12,13,14,15,16]}
+    conDict = {'VelMinima': velMin,
+               'VelClasses':[6,7,8,9,10,11,12,13,14,15]}
     return conDict
+
+def checkProperty(root,quantity,valquantity):
+
+    quantityExpression = ".//Quantity[@Name='" + quantity + "']/Props/Prop[@Name='Value'][@Value='" + valquantity + "']"
+
+    quantities = root.findall(quantityExpression)
+
+    assert quantities , f"The quantity {quantity} was not updated"
 
 def checkLink(xml:ET.Element,linkName:str,fromM:str,toM:str,connName:str,inflowNumber:str=''):
 
@@ -655,13 +663,32 @@ def test_setPathElementsProp(initialXML,modelClasses,dictForWEST):
 
     tree = ET.parse(initialXML)
     root = tree.getroot()
-
     
     allXMLSubmodels = uf.getModelsByTypeAndSetClasses(root,modelClasses,3,24)
     root, namesDict, iCatchN, iCombN = uf. setPathElementsProp(root, dictForWEST[0][0], dictForWEST[0][1], dictForWEST[2], allXMLSubmodels, 1, 1)
+    
+#   ET.indent(tree, space="\t", level=0)
+#   tree.write('tests/xmlTEST_RESUKT.xml')
 
+    # ------------------------check the updating of the quantities ------------------------------------------------
+    quantities = {'.Sew_1.A':'11','.Sew_1.k':'0.2',
+                  '.Sew_6.A':'12','.Sew_6.k':'0.2',
+                  '.Sew_10.A':'13','.Sew_10.k':'0.2',
+                  '.Sew_13.A':'15','.Sew_13.k':'0.2',
+                  '.Catchment_1.TotalArea':'11','.Catchment_1.Inhabitants':'300',
+                  '.Catchment_4.TotalArea':'14','.Catchment_4.Inhabitants':'300',
+                  '.Connector_info_1.Vs_limit_min':'11','.Connector_info_1.Vs_limit(C0)':'6',
+                  '.Connector_info_4.Vs_limit_min':'41','.Connector_info_4.Vs_limit(C0)':'6',}
 
-        
+    for q in quantities:
+
+        checkProperty(root,q,quantities[q])
+
+    
+    # ------------------------check the updating of the quantities ------------------------------------------------
+
+    #checks that the namesDict is how it suppose to be TODO!!!
+
 
 #def test_updateWESTLayoutFile(initialXML, dictForWEST,modelClasses):
 

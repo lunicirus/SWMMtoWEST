@@ -212,7 +212,7 @@ def modifyCatchmentModel(root:ET.Element, quantities:ET.Element, XMLCatchment:ET
     instName = getInstanceName(XMLCatchment)
 
     #For simple values
-    for P,XMLval in zip(CATCH_DICT_SET,CATCH_XML_SET):
+    for P, XMLval in zip(CATCH_DICT_SET, CATCH_XML_SET):
 
         if P in props:
             val = props[P]
@@ -569,7 +569,7 @@ def setClassAndAddToDictionary(modelClass:str, XMLElements:dict[ET.Element], sub
 def setPathElementsProp(root:ET.Element, attrSewer:list[dict], attrCatch:list[dict], attrConn:list[dict],
                         XMLsByType: dict[dict[ET.Element]], iCatch:int, iComb:int)->tuple[ET.Element,dict[str],int,int]:                      
     """
-        Set the properties and classes of all the elements of a path.
+        Set the properties of all the elements of a path.
     Args:
         root (ET.Element): Root element of the layout XML file of the WEST model.
         attrSewer (list[dict]): Attributes of the sewers. Sewers are assumed to be in order e.i., the first properties belong to sewer 1.

@@ -1,0 +1,28 @@
+<?xml version='1.0' encoding='utf-8'?>
+<Tornado>
+	<Layout Name="ProjectAutomatico" Version="1.0">
+		<Props>
+			<Prop Name="Date" Value="Fri Mar 15 16:13:21 2024" />
+		</Props>
+		<SubModels>
+</SubModels>
+		<Params>
+</Params>
+		<InterfaceVars>
+</InterfaceVars>
+		<StateVars>
+</StateVars>
+		<Links>
+</Links>
+		<Quantities>
+			<Quantity Name=".t">
+				<Props>
+					<Prop Name="Value" Value="N/A" />
+					<Prop Name="DisplayUnit" Value="d" />
+				</Props>
+			</Quantity>
+		</Quantities>
+		<Favorites>
+</Favorites>
+	</Layout>
+</Tornado>
