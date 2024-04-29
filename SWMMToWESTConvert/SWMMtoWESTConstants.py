@@ -46,6 +46,7 @@ DISCHARGE_PIPE_NAME = 'Name_dischargingPipe'
 BREAK_POINT = "BreakPoint"
 PATH = 'PathTankInSeries'
 WCATCHMENTS = 'WESTCatchments' 
+TRUNK = 'Trunk'
 
 PERC_LIM_TO_BRANCH = 0.2 # Percentage from the trunk flow for a connecting pipe to be considered as a relevant branch
 

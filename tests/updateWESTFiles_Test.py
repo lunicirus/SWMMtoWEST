@@ -619,22 +619,6 @@ def test_createLinks_conf3(sample_Elements,names_Dict_Conf2,elements2):
     checkLink(links_element,"Link23","Icon15","Icon20","CustomOrthogonalLine23") 
     checkLink(links_element,"Link24","Icon20","Icon25","CustomOrthogonalLine24","2") 
 
-def test_getLastTankModelName(pipeSectionsAndDict):
-    
-    lastPipe = "UNI_18252"  # Assuming the last pipe is in the second pipe section
-    result = uf.getLastTankModelName(pipeSectionsAndDict[0], lastPipe, pipeSectionsAndDict[1]) 
-
-    assert result == "Icon6" 
-
-def test_getLastTankModelName_exception(pipeSectionsAndDict):
-
-    lastPipe = "UnknownPipe"  # Assuming the last pipe is not in any pipe section
-
-    with pytest.raises(Exception) as excinfo: # Call the function and assert the exception
-        uf.getLastTankModelName(pipeSectionsAndDict[0], lastPipe, pipeSectionsAndDict[1])
-
-    assert "The tank name was not found" in str(excinfo.value) # Assert the exception message
-
 def test_getModelsByTypeAndSetClasses(initialXML,modelClasses):
 
     tree = ET.parse(initialXML)
@@ -658,15 +642,17 @@ def test_getModelsByTypeAndSetClasses(initialXML,modelClasses):
             submodel= modelsElement[key]
             assert submodel.find("./Props/Prop[@Name='ClassName']").get('Value') == modelClasses[classType], f"The class was not set correctly for {submodel}"
 
-
 def test_setPathElementsProp(initialXML,modelClasses,dictForWEST):
 
     tree = ET.parse(initialXML)
     root = tree.getroot()
     
     allXMLSubmodels = uf.getModelsByTypeAndSetClasses(root,modelClasses,3,24)
-    root, namesDict, iCatchN, iCombN = uf. setPathElementsProp(root, dictForWEST[0][0], dictForWEST[0][1], dictForWEST[2], allXMLSubmodels, 1, 1)
+    root, namesDict, iCatchN, iCombN = uf. setPathElementsProp(root, dictForWEST[0][0], dictForWEST[0][1], dictForWEST[2][:4], allXMLSubmodels, 1, 1)
     
+    assert iCatchN == 5, f"The next index for catchment is not the expected"
+    assert iCombN == 5, f"The next index for combiner is not the expected"
+
 #   ET.indent(tree, space="\t", level=0)
 #   tree.write('tests/xmlTEST_RESUKT.xml')
 
@@ -686,8 +672,41 @@ def test_setPathElementsProp(initialXML,modelClasses,dictForWEST):
 
     
     # ------------------------check the updating of the quantities ------------------------------------------------
+    dict_Resul= {}
+    sewers = ['pipe100 - pipe101(0)','pipe100 - pipe101(1)','pipe100 - pipe101(2)','pipe100 - pipe101(3)',
+            'pipe200 - pipe201(0)','pipe200 - pipe201(1)','pipe200 - pipe201(2)','pipe200 - pipe201(3)',
+            'pipe300 - pipe301(0)','pipe300 - pipe301(1)','pipe400 - pipe401(0)','pipe400 - pipe401(1)','pipe500 - pipe501(0)']
+    catchments = ['pipe100 - pipe101(Catch)[previous]','pipe100 - pipe101(Catch)','pipe200 - pipe201(Catch)','pipe400 - pipe401(Catch)']
 
-    #checks that the namesDict is how it suppose to be TODO!!!
+    for ele, prefix, icons in zip([sewers,catchments,range(1,5),range(1,5)],
+                            ['','','Connector_info_','Well_'],
+                            [range(1,14),range(25,29),range(32,36),range(39,43)]):
+
+        for s,i in zip(ele, icons):
+            dict_Resul[prefix + str(s)] =  "Icon" + str(i)
+
+    assert namesDict == dict_Resul, f"The dictionary with name equivalences between display and model name is not the expected"
+
+def test_connectBranchToCombiner(sample_Links):
+  
+    lastBranchEle = "Icon23"
+    linki = 3
+    iComb = 4
+    tree = sample_Links[1]
+    eleSample = {4: ET.Element("SubModel", {"Name": "IconCombiner"})}
+
+    # Call the function
+    result_linksXML, iLinkN, iCombN, result_lastElement = uf.connectBranchToCombiner(sample_Links[0], lastBranchEle, linki, eleSample, iComb)
+    
+    #ET.indent(tree, space="\t", level=0)
+    #tree.write('tests/xmlTEST_RESUKT.xml')
+
+    # Assert the result
+    assert len(result_linksXML.findall(".//Link")) == 3
+    assert result_linksXML.findall(".//Link[@Name= 'Link3']"), f"The link was not saved in the XML"
+    assert iLinkN == 4, f"The index of the next link is not the expected"
+    assert iCombN == 5, f"The index of the next combiner is not the expected"
+    assert result_lastElement == "IconCombiner", f"The name of the combiner model is not correct"
 
 
 #def test_updateWESTLayoutFile(initialXML, dictForWEST,modelClasses):
@@ -695,12 +714,7 @@ def test_setPathElementsProp(initialXML,modelClasses,dictForWEST):
     #TODO
     #initialXMLMOD = 'tests/updateWESTLayoutFileTEST_Result.xml'
 
-    
-
-
     #uf.updateWESTLayoutFile(initialXML, initialXMLMOD, modelClasses, dictForWEST[0],dictForWEST[1], dictForWEST[2])
-
-   
 
     #assert isinstance(result_links, ET.Element) # Assert the result
     #assert len(list(result_links)) == 24, "Incorrect final number of links"
