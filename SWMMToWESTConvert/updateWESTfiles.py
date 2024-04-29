@@ -413,7 +413,7 @@ def connectPipeSection(namesDict:dict[str], linksXML:ET.Element, linki:int, last
 
     return linksXML, linki, lastElement
 
-def addLink(linksXML:ET.Element, linki:int, fromElement:str, toElement:str)->tuple[ET.Element, int, str]:
+def addLink(linksXML:ET.Element, linki:int, fromElement:str, toElement:str, inSuffix:str = '')->tuple[ET.Element, int, str]:
     """
         Adds a new link to the links element of the model's XML layout file. 
         For this, creates the names of the link and connection. Creates the XML of a link, and adds it to the links element. 
@@ -422,6 +422,7 @@ def addLink(linksXML:ET.Element, linki:int, fromElement:str, toElement:str)->tup
         linki (int): Index of the next link in the WEST model.
         fromElement (str): Model name of the element where the link starts.
         toElement (str): Model name of the element where the link finishes.
+        inSuffix (str): Number of the inflow. Used only for combiners. e.g. "1" , then the to value would be: sub_models.Icon44.interface.Inflow1
     Returns:
         tuple[ET.Element, int, str]: Updated links element. Updated index for the next link. Model name of the last element connected to the WEST model.
     """    
@@ -446,19 +447,30 @@ def getLinkAndConnectionNames(linki:int)->tuple[str, str, int]:
 
     return nameL, nameC, linki
 
-def connectBranchToCombiner(linksXML:ET.Element, lastBranchEle:str, linki:int, iComb:int):
+def connectBranchToCombiner(linksXML:ET.Element, lastBranchEle:str, iLink:int, XMLCombiners: dict[ET.Element], iComb:int):
+    """
+        Connects the last element of a branch with the next combiner available
+    Args:
+        linksXML (ET.Element): _description_
+        lastBranchEle (str): _description_
+        iLink (int): _description_
+        XMLCombiners (dict[ET.Element]): _description_
+        iComb (int): _description_
+    Returns:
+        _type_: _description_
+    """    
+    combName = XMLCombiners[iComb].attrib["Name"]
 
-    combName = W_C.XML_COMB_NAMES + str(iComb) 
+    linksXML, iLink, lastElement = addLink(linksXML, iLink, lastBranchEle, combName, W_C.XML_INFLOW_SUFFIX1)
+    assert lastElement == combName
 
-    linksXML, linki, lastElement = addLink(linksXML, linki, lastBranchEle, combName)
-
-
-    return linksXML, linki, lastElement
+    iComb += 1    
+    return linksXML, iLink, iComb, combName
 
 def createPathLinks(linksXML:ET.Element, namesDict:dict[str], catchments:list[dict], sewerSections:list[dict], iLink:int, 
                     iCatch:int, iComb:int)->tuple[ET.Element,str,int,int,int]:
     """
-        Creates all the links of a path. Loops the sewer sections adding links between the tanks composing them and 
+        Creates all the links of a branch. Loops the sewer sections adding links between the tanks composing them and 
         links the catchments with the same name of the sewer section before or after the tank according to its position property.
         The element Links should exist in the WEST's '.Layout.xml' file
     Args:
@@ -467,8 +479,8 @@ def createPathLinks(linksXML:ET.Element, namesDict:dict[str], catchments:list[di
         catchments (list[dict]): All catchments of the model and their properties.
         sewerSections (list[dict]): All sewer sections of the model and their properties.
         linki (int): Index of the next link to be created for the model. 
-        iCatch
-        iComb 
+        iCatch (int): Index of the next catchment to be created for the model.
+        iComb (int): Index of the next combiner to be created for the model.
     Returns:
         tuple[ET.Element,str,int,int,int]: Updated links element of the WEST's '.Layout.xml' file. Last element connected in the path. 
                                       Indexes of the next link, catchment and combiner.
@@ -607,37 +619,9 @@ def setPathElementsProp(root:ET.Element, attrSewer:list[dict], attrCatch:list[di
         namesDict[W_C.XML_COMB_NAMES + str(c)] = combinerXML.attrib["Name"]
       
     return root, namesDict, iCatchN, iCombN
- 
-def getLastTankModelName(pipeSections:list[dict], lastPipe:str, namesDict:dict[str])->str:
-    """
-        Obtains the model name of the last tank in series represeting the pipe section with the lastpipe.
-    Args:
-        pipeSections (list[dict]): Pipe sections and their properties.
-        lastPipe (str): Name of the last pipe in a pipe section.
-        namesDict (dict[str]): Dictionary of names between the instance name and the model name. keys are the instanceNames.
-    Raises:
-        Exception: If the pipe was not the last pipe of any sections.
-    Returns:
-        str: Name of the WEST model of the last tank in the pipe section finishing at the last pipe 
-    """    
-    nameTank = None
-    for pipeSection in pipeSections:
-
-        lastPipeSection = pipeSection[STW_C.NAME].split(STW_C.PIPE_SEC_NAM_SEP)[1].strip()
-
-        if lastPipeSection == lastPipe:
-            last_index = pipeSection[STW_C.TANK_INDEXES][-1]
-            nameTank = pipeSection[STW_C.NAME] + "(" + str(last_index) + ")"
-            break
-    else:
-        raise Exception("The tank name was not found")
-    
-    nameModel = namesDict[nameTank]
-
-    return nameModel
     
 def updateWESTLayoutFile(layoutXMLPath:str, layoutXMLPath_MOD:str, modelClasses:dict[str], trunkModels:list[list[dict]],
-                         branchesModels:dict[dict[list[dict]]], connAttributes:dict):
+                         branchesModels:dict[dict[list[dict]]], connAttributes:dict[list[dict]]):
     """
         Updates the classes and atributes of all elements on a network, creating links between all elements.
     Args:
@@ -659,30 +643,26 @@ def updateWESTLayoutFile(layoutXMLPath:str, layoutXMLPath_MOD:str, modelClasses:
 
     nTanks = branchesModels[list(branchesModels.keys())[-1]][STW_C.PATH][STW_C.TANK_INDEXES][-1] #The last tank of the last branch
     XMLsByType = getModelsByTypeAndSetClasses(root, modelClasses, len(branchesModels), nTanks)
+    combiners = {}
     
     for br in branchesModels.keys():
 
         # Adds the properties of the elements within the branch
         branch = branchesModels[br]
-        root, namesDict, iCatchN, iComb = setPathElementsProp(root, branch[STW_C.PATH], branch[STW_C.WCATCHMENTS], connAttributes, XMLsByType, iCatch, iComb)
+        root, namesDict, iCatchN, iComb = setPathElementsProp(root, branch[STW_C.PATH], branch[STW_C.WCATCHMENTS], connAttributes[br], XMLsByType, iCatch, iComb)
         
         #Create the links
-        linksXML, lastPathElement, iLink, iCatch, iComb = createPathLinks(linksXML, namesDict, branch[STW_C.WCATCHMENTS], branch[STW_C.PATH],  iLink, iCatch, iComb)
+        linksXML, lastPathElement, iLink, iCatch, iComb = createPathLinks(linksXML, namesDict, branch[STW_C.WCATCHMENTS], branch[STW_C.PATH], iLink, iCatch, iComb)
+        assert iCatch == iCatchN, f"The number of updated catchments in the properties and the path is not the same"
+
+        linksXML, iLink, iComb, combName = connectBranchToCombiner(linksXML, lastPathElement, iLink, XMLsByType[STW_C.COMBINERS], iComb)
         
-        #linksXML, iLink, combiner = connectBranchToCombiner(linksXML, lastPathElement, iLink, iComb)
+        combiners[br] = combName
         
-        #eleToConnect = getLastTankModelName(trunkPipeSections, br, namesDict)
-        #br = 
-        #Connect the branch TODO
-
-        #firstBranchElement
-        #ultimo tanque del pipe section que tenga nombre igual al br 
-
-
     # Adds the properties of the elements within the trunk
-    root, namesDict = setPathElementsProp(root, trunkPipeSections, trunkModels[1], connAttributes)
+    root, namesDict, iCatchN, iComb = setPathElementsProp(root, trunkPipeSections, trunkModels[1], connAttributes[STW_C.TRUNK], XMLsByType, iCatch, iComb)
     #Create the links of the trunk
-    linksXML, lastPathElement, iLink = createPathLinks(linksXML, namesDict, branch[STW_C.WCATCHMENTS], branch[STW_C.PATH],  iLink)
+    linksXML, lastPathElement, iLink, iCatch, iComb = createPathLinks(linksXML, namesDict, branch[STW_C.WCATCHMENTS], branch[STW_C.PATH], iLink, iCatch, iComb)
         
 
 
