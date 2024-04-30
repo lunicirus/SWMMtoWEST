@@ -402,13 +402,14 @@ def connectPipeSection(namesDict:dict[str], linksXML:ET.Element, linki:int, last
     """    
     tanksIndexes = pipeSect[STW_C.TANK_INDEXES]
     name = pipeSect[STW_C.NAME]
+    tini= tanksIndexes[0]
 
-    if lastElement is None:
-        lastElement = namesDict[name + "(" + str(tanksIndexes[0]) + ")"]
+    if lastElement is None: #If there is no previous element then starts with the first thank 
+        lastElement = namesDict[name + "(0)"]
         tanksIndexes = tanksIndexes[1:]
 
     for t in tanksIndexes:
-        tankName = namesDict[name + "(" + str(t) + ")"]
+        tankName = namesDict[name + "(" + str(t-tini) + ")"]
         linksXML, linki, lastElement = addLink(linksXML, linki, lastElement, tankName)
 
     return linksXML, linki, lastElement
@@ -468,9 +469,9 @@ def connectBranchToCombiner(linksXML:ET.Element, lastBranchEle:str, iLink:int, X
     return linksXML, iLink, iComb, combName
 
 def createPathLinks(linksXML:ET.Element, namesDict:dict[str], catchments:list[dict], sewerSections:list[dict], iLink:int, 
-                    iCatch:int, iComb:int)->tuple[ET.Element,str,int,int,int]:
+                    iCatch:int, iComb:int, branches:dict[str] = None)->tuple[ET.Element,str,int,int,int]:
     """
-        Creates all the links of a branch. Loops the sewer sections adding links between the tanks composing them and 
+        Creates all the links of a path. Loops the sewer sections adding links between the tanks composing them and 
         links the catchments with the same name of the sewer section before or after the tank according to its position property.
         The element Links should exist in the WEST's '.Layout.xml' file
     Args:
@@ -488,13 +489,21 @@ def createPathLinks(linksXML:ET.Element, namesDict:dict[str], catchments:list[di
     #TODO check if the links exist already
     endConnection, catchiName, catchModelNames, iCatch, iComb = getNextCatchment(namesDict, catchments, iCatch, iComb)
 
+    #If its the trunk then gets the first branch
+    if branches is not None:
+        branchesR = dict(reversed(branches.items()))
+        branch = branchesR.popitem()
+    else:
+        branch = None
+
     linkiIni = iLink
     lastElement = None
     for p in sewerSections:
 
         sewerCatchiName = p[STW_C.NAME] + STW_C.SECTION_CATCHMENT
-        sewerCatchPreviName = p[STW_C.NAME] + STW_C.SECTION_CATCHMENT + STW_C.BEFORE_CATCHMENT
+        sewerCatchPreviName = sewerCatchiName + STW_C.BEFORE_CATCHMENT
         seweriInputName = sewerCatchiName + STW_C.INPUT_CATCHMENT #the name of a catchment correspondant to an input associated to the i sewer section
+        branchName = p[STW_C.NAME].split(STW_C.PIPE_SEC_NAM_SEP)[1] 
 
         #if the catchment has the name of the sewer section and its not attached to the end, connects the catchment before the sewer section
         if (catchiName == sewerCatchPreviName) and (not endConnection):  
@@ -511,6 +520,11 @@ def createPathLinks(linksXML:ET.Element, namesDict:dict[str], catchments:list[di
         #the catchmenti was updated and this will add another one for the input 
         if (catchiName == seweriInputName):
             linksXML, iLink, lastElement, endConnection, catchiName, catchModelNames, iCatch, iComb = connectCurrentCatchment(namesDict, catchments, linksXML, iLink, lastElement, catchModelNames, iCatch, iComb)
+
+        #Joins the branch
+        if branch == branchName[0]:
+            linksXML, iLink, lastElement = addLink(linksXML, iLink, lastElement, branch[1], W_C.XML_INFLOW_SUFFIX2)
+            branch = branchesR.popitem()
 
     print("The number of created links was ", iLink-linkiIni)
 
@@ -641,7 +655,7 @@ def updateWESTLayoutFile(layoutXMLPath:str, layoutXMLPath_MOD:str, modelClasses:
     root = tree.getroot()  
     linksXML = root.find('.//Links')
 
-    nTanks = branchesModels[list(branchesModels.keys())[-1]][STW_C.PATH][STW_C.TANK_INDEXES][-1] #The last tank of the last branch
+    nTanks = branchesModels[list(branchesModels.keys())[-1]][STW_C.PATH][-1][STW_C.TANK_INDEXES][-1] #The last tank of the last branch
     XMLsByType = getModelsByTypeAndSetClasses(root, modelClasses, len(branchesModels), nTanks)
     combiners = {}
     
@@ -649,7 +663,7 @@ def updateWESTLayoutFile(layoutXMLPath:str, layoutXMLPath_MOD:str, modelClasses:
 
         # Adds the properties of the elements within the branch
         branch = branchesModels[br]
-        root, namesDict, iCatchN, iComb = setPathElementsProp(root, branch[STW_C.PATH], branch[STW_C.WCATCHMENTS], connAttributes[br], XMLsByType, iCatch, iComb)
+        root, namesDict, iCatchN, iCombN = setPathElementsProp(root, branch[STW_C.PATH], branch[STW_C.WCATCHMENTS], connAttributes[br], XMLsByType, iCatch, iComb)
         
         #Create the links
         linksXML, lastPathElement, iLink, iCatch, iComb = createPathLinks(linksXML, namesDict, branch[STW_C.WCATCHMENTS], branch[STW_C.PATH], iLink, iCatch, iComb)
@@ -662,9 +676,7 @@ def updateWESTLayoutFile(layoutXMLPath:str, layoutXMLPath_MOD:str, modelClasses:
     # Adds the properties of the elements within the trunk
     root, namesDict, iCatchN, iComb = setPathElementsProp(root, trunkPipeSections, trunkModels[1], connAttributes[STW_C.TRUNK], XMLsByType, iCatch, iComb)
     #Create the links of the trunk
-    linksXML, lastPathElement, iLink, iCatch, iComb = createPathLinks(linksXML, namesDict, branch[STW_C.WCATCHMENTS], branch[STW_C.PATH], iLink, iCatch, iComb)
-        
-
+    linksXML, lastPathElement, iLink, iCatch, iComb = createPathLinks(linksXML, namesDict, trunkModels[1], trunkPipeSections, iLink, iCatch, iComb)
 
     # Save the modified XML to a new file
     ET.indent(tree, space="\t", level=0)

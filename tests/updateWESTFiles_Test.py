@@ -32,7 +32,7 @@ def sample_Elements():
 @pytest.fixture
 def names_Dict():
 
-    namesDict = {"PipeSect1(1)": "Icon00008", "PipeSect1(2)": "Icon1","PipeSect1(3)": "Icon3", "Catchment_2": "Icon2",
+    namesDict = {"PipeSect1(0)": "Icon00008", "PipeSect1(1)": "Icon1","PipeSect1(2)": "Icon3", "Catchment_2": "Icon2",
                  "Catchment_1":"Icon22","Connector_info_1":"Icon23","Well_1":"Two_combiner"}
     
     return namesDict
@@ -42,8 +42,8 @@ def names_Dict_Conf():
 
     names = {}
 
-    sewers = {"Sew{}({})".format(i,j): "Icon{}".format(j)  for i,j in zip([1,1,1,1,2,2,2,3,3,3],range(1, 11))}
-    catchments = { "Sew{}(Catch){}{}".format(i,j,h): "Icon{}".format(k) for i, j, k, h in zip([1,1,2,2,3],
+    sewers = {"Sew_{}i - Sew_{}f({})".format(i,i,j): "Icon{}".format(j)  for i,j in zip([1,1,1,1,2,2,2,3,3,3],[0,1,2,3,0,1,2,0,1,2])}
+    catchments = { "Sew_{}i - Sew_{}f(Catch){}{}".format(i,i,j,h): "Icon{}".format(k) for i, j, k, h in zip([1,1,2,2,3],
                                                                                           ['','','','[input]',''],
                                                                                           range(11, 16),
                                                                                           ['[previous]','','','','']
@@ -63,8 +63,8 @@ def names_Dict_Conf1():
 
     names = {}
 
-    sewers = {"Sew{}({})".format(i,j): "Icon{}".format(j)  for i,j in zip([1,1,1,2,2,2,3,3,3,3],range(1, 11))}
-    catchments = { "Sew{}(Catch){}{}".format(i,j,h): "Icon{}".format(k) for i, j, k, h in zip([1,2,2,2,3],
+    sewers = {"Sew_{}i - Sew_{}f({})".format(i,i,j): "Icon{}".format(j)  for i,j in zip([1,1,1,2,2,2,3,3,3,3],[0,1,2,3,0,1,0,1,2,3])}
+    catchments = { "Sew_{}i - Sew_{}f(Catch){}{}".format(i,i,j,h): "Icon{}".format(k) for i, j, k, h in zip([1,2,2,2,3],
                                                                                           ['','','','[input]',''],
                                                                                           range(11, 16),
                                                                                           ['','[previous]','','','[previous]']
@@ -84,8 +84,8 @@ def names_Dict_Conf2():
 
     names = {}
 
-    sewers = {"Sew{}({})".format(i,j): "Icon{}".format(j)  for i,j in zip([1,2,2,2,2,2,3,4,4,4],range(1, 11))}
-    catchments = { "Sew{}(Catch){}{}".format(i,j,h): "Icon{}".format(k) for i, j, k, h in zip([2,2,3,4,4],
+    sewers = {"Sew_{}i - Sew_{}f({})".format(i,i,j): "Icon{}".format(j)  for i,j in zip([1,2,2,2,2,2,3,4,4,4],[0,0,1,2,3,4,0,0,1,2])}
+    catchments = { "Sew_{}i - Sew_{}f(Catch){}{}".format(i,i,j,h): "Icon{}".format(k) for i, j, k, h in zip([2,2,3,4,4],
                                                                                           ['','[input]','','','[input]'],
                                                                                           range(11, 16),
                                                                                           ['[previous]','','','','']
@@ -103,43 +103,43 @@ def names_Dict_Conf2():
 @pytest.fixture
 def elements():
 
-    sewers = [{'PipeName': 'Sew1','tanksIndexes': [1,2,3,4]},
-              {'PipeName': 'Sew2','tanksIndexes': [5,6,7]},
-              {'PipeName': 'Sew3','tanksIndexes': [8,9,10]}]
-    catchments = [{'CatchmentName': 'Sew1(Catch)[previous]','EndNode': False},
-                  {'CatchmentName': 'Sew1(Catch)','EndNode': True},
-                  {'CatchmentName': 'Sew2(Catch)','EndNode': True},
-                  {'CatchmentName': 'Sew2(Catch)[input]','EndNode': True},
-                  {'CatchmentName': 'Sew3(Catch)','EndNode': True}]
+    sewers = [{'PipeName': 'Sew_1i - Sew_1f','tanksIndexes': [1,2,3,4]},
+              {'PipeName': 'Sew_2i - Sew_2f','tanksIndexes': [5,6,7]},
+              {'PipeName': 'Sew_3i - Sew_3f','tanksIndexes': [8,9,10]}]
+    catchments = [{'CatchmentName': 'Sew_1i - Sew_1f(Catch)[previous]','EndNode': False},
+                  {'CatchmentName': 'Sew_1i - Sew_1f(Catch)','EndNode': True},
+                  {'CatchmentName': 'Sew_2i - Sew_2f(Catch)','EndNode': True},
+                  {'CatchmentName': 'Sew_2i - Sew_2f(Catch)[input]','EndNode': True},
+                  {'CatchmentName': 'Sew_3i - Sew_3f(Catch)','EndNode': True}]
 
     return sewers, catchments
 
 @pytest.fixture
 def elements1():
 
-    sewers = [{'PipeName': 'Sew1','tanksIndexes': [1,2,3]},
-              {'PipeName': 'Sew2','tanksIndexes': [4,5,6]},
-              {'PipeName': 'Sew3','tanksIndexes': [7,8,9,10]}]
-    catchments = [{'CatchmentName': 'Sew1(Catch)','EndNode': True},
-                  {'CatchmentName': 'Sew2(Catch)[previous]','EndNode': False},
-                  {'CatchmentName': 'Sew2(Catch)','EndNode': True},
-                  {'CatchmentName': 'Sew2(Catch)[input]','EndNode': True},
-                  {'CatchmentName': 'Sew3(Catch)[previous]','EndNode': False}]
+    sewers = [{'PipeName': 'Sew_1i - Sew_1f','tanksIndexes': [1,2,3]},
+              {'PipeName': 'Sew_2i - Sew_2f','tanksIndexes': [4,5,6]},
+              {'PipeName': 'Sew_3i - Sew_3f','tanksIndexes': [7,8,9,10]}]
+    catchments = [{'CatchmentName': 'Sew_1i - Sew_1f(Catch)','EndNode': True},
+                  {'CatchmentName': 'Sew_2i - Sew_2f(Catch)[previous]','EndNode': False},
+                  {'CatchmentName': 'Sew_2i - Sew_2f(Catch)','EndNode': True},
+                  {'CatchmentName': 'Sew_2i - Sew_2f(Catch)[input]','EndNode': True},
+                  {'CatchmentName': 'Sew_3i - Sew_3f(Catch)[previous]','EndNode': False}]
 
     return sewers, catchments
 
 @pytest.fixture
 def elements2():
 
-    sewers = [{'PipeName': 'Sew1','tanksIndexes': [1]},
-              {'PipeName': 'Sew2','tanksIndexes': [2,3,4,5,6]},
-              {'PipeName': 'Sew3','tanksIndexes': [7]},
-              {'PipeName': 'Sew4','tanksIndexes': [8,9,10]}]
-    catchments = [{'CatchmentName': 'Sew2(Catch)[previous]','EndNode': False},
-                  {'CatchmentName': 'Sew2(Catch)[input]','EndNode': True},
-                  {'CatchmentName': 'Sew3(Catch)','EndNode': True},
-                  {'CatchmentName': 'Sew4(Catch)','EndNode': True},
-                  {'CatchmentName': 'Sew4(Catch)[input]','EndNode': True}]
+    sewers = [{'PipeName': 'Sew_1i - Sew_1f','tanksIndexes': [1]},
+              {'PipeName': 'Sew_2i - Sew_2f','tanksIndexes': [2,3,4,5,6]},
+              {'PipeName': 'Sew_3i - Sew_3f','tanksIndexes': [7]},
+              {'PipeName': 'Sew_4i - Sew_4f','tanksIndexes': [8,9,10]}]
+    catchments = [{'CatchmentName': 'Sew_2i - Sew_2f(Catch)[previous]','EndNode': False},
+                  {'CatchmentName': 'Sew_2i - Sew_2f(Catch)[input]','EndNode': True},
+                  {'CatchmentName': 'Sew_3i - Sew_3f(Catch)','EndNode': True},
+                  {'CatchmentName': 'Sew_4i - Sew_4f(Catch)','EndNode': True},
+                  {'CatchmentName': 'Sew_4i - Sew_4f(Catch)[input]','EndNode': True}]
 
     return sewers, catchments
 
@@ -269,23 +269,25 @@ def dictForWEST():
     catch = createMockCatchDict('pipe700 - pipe701(Catch)', '70', True)
     listb2['PathTankInSeries'] = [sew,sew2]
     listb2['WESTCatchments'] = [catch]
-    branches['pipe300 - pipe301']= listb
+    branches['pipe300 - pipe301']= listb2
     #---------------branch 3---------------------------------------------------------
     listb3 = {} 
     sew = createMockSewerDict('pipe900 - pipe901', '90', [23,24])
     catch = createMockCatchDict('pipe900 - pipe901(Catch)', '90', True)
     listb3['PathTankInSeries'] = [sew]
     listb3['WESTCatchments'] = [catch]
-    branches['pipe400 - pipe401']= listb
+    branches['pipe400 - pipe401']= listb3
 
     #--------------Connectors-----------------------------------------------
-    connectors= []
-    for c in range(1,8):
-        conn = createMockConnector(str(c)+'1')
-        connectors.append(conn)
+    connectorsDict = {}
+    for b, indexes in zip(['Trunk','pipe100 - pipe101','pipe300 - pipe301','pipe400 - pipe401'],[range(1,5),[5],[6],[7]]):
+        connectors= []
+        for c in indexes:
+            conn = createMockConnector(str(c)+'1')
+            connectors.append(conn)
+        connectorsDict[b] = connectors
 
-
-    return listTrunk, branches, connectors
+    return listTrunk, branches, connectorsDict
 
 @pytest.fixture(scope='session')
 def modelClasses():
@@ -296,7 +298,6 @@ def modelClasses():
                     'Two Way Combiners Class': 'ClassTEST_COMB'}
     
     return modelClasses
-
 
 #---------------------------Utils-------------------------¸
 def createMockSewerDict(name: str, valArea: str, listIndexes: list[int]):
@@ -648,7 +649,7 @@ def test_setPathElementsProp(initialXML,modelClasses,dictForWEST):
     root = tree.getroot()
     
     allXMLSubmodels = uf.getModelsByTypeAndSetClasses(root,modelClasses,3,24)
-    root, namesDict, iCatchN, iCombN = uf. setPathElementsProp(root, dictForWEST[0][0], dictForWEST[0][1], dictForWEST[2][:4], allXMLSubmodels, 1, 1)
+    root, namesDict, iCatchN, iCombN = uf. setPathElementsProp(root, dictForWEST[0][0], dictForWEST[0][1], dictForWEST[2]['Trunk'], allXMLSubmodels, 1, 1)
     
     assert iCatchN == 5, f"The next index for catchment is not the expected"
     assert iCombN == 5, f"The next index for combiner is not the expected"
@@ -708,13 +709,12 @@ def test_connectBranchToCombiner(sample_Links):
     assert iCombN == 5, f"The index of the next combiner is not the expected"
     assert result_lastElement == "IconCombiner", f"The name of the combiner model is not correct"
 
-
-#def test_updateWESTLayoutFile(initialXML, dictForWEST,modelClasses):
+def test_updateWESTLayoutFile(initialXML, dictForWEST,modelClasses):
 
     #TODO
-    #initialXMLMOD = 'tests/updateWESTLayoutFileTEST_Result.xml'
+    initialXMLMOD = 'tests/updateWESTLayoutFileTEST_Result.xml'
 
-    #uf.updateWESTLayoutFile(initialXML, initialXMLMOD, modelClasses, dictForWEST[0],dictForWEST[1], dictForWEST[2])
+    uf.updateWESTLayoutFile(initialXML, initialXMLMOD, modelClasses, dictForWEST[0], dictForWEST[1], dictForWEST[2])
 
     #assert isinstance(result_links, ET.Element) # Assert the result
     #assert len(list(result_links)) == 24, "Incorrect final number of links"
