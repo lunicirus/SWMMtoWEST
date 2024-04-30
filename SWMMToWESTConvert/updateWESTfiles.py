@@ -667,7 +667,8 @@ def updateWESTLayoutFile(layoutXMLPath:str, layoutXMLPath_MOD:str, modelClasses:
         
         #Create the links
         linksXML, lastPathElement, iLink, iCatch, iComb = createPathLinks(linksXML, namesDict, branch[STW_C.WCATCHMENTS], branch[STW_C.PATH], iLink, iCatch, iComb)
-        assert iCatch == iCatchN, f"The number of updated catchments in the properties and the path is not the same"
+        assert iCatch == iCatchN, f"The number of updated catchments in the properties and the path are not the same"
+        assert iComb == iCombN, f"The number of updated combiners in the properties and the path are not the same"
 
         linksXML, iLink, iComb, combName = connectBranchToCombiner(linksXML, lastPathElement, iLink, XMLsByType[STW_C.COMBINERS], iComb)
         

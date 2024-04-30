@@ -42,7 +42,9 @@ def names_Dict_Conf():
 
     names = {}
 
-    sewers = {"Sew_{}i - Sew_{}f({})".format(i,i,j): "Icon{}".format(j)  for i,j in zip([1,1,1,1,2,2,2,3,3,3],[0,1,2,3,0,1,2,0,1,2])}
+    sewers = {"Sew_{}i - Sew_{}f({})".format(i,i,j): "Icon{}".format(k)  for i,j,k in zip([1,1,1,1,2,2,2,3,3,3],
+                                                                                          [0,1,2,3,0,1,2,0,1,2],
+                                                                                          range(1,11))}
     catchments = { "Sew_{}i - Sew_{}f(Catch){}{}".format(i,i,j,h): "Icon{}".format(k) for i, j, k, h in zip([1,1,2,2,3],
                                                                                           ['','','','[input]',''],
                                                                                           range(11, 16),
@@ -63,7 +65,9 @@ def names_Dict_Conf1():
 
     names = {}
 
-    sewers = {"Sew_{}i - Sew_{}f({})".format(i,i,j): "Icon{}".format(j)  for i,j in zip([1,1,1,2,2,2,3,3,3,3],[0,1,2,3,0,1,0,1,2,3])}
+    sewers = {"Sew_{}i - Sew_{}f({})".format(i,i,j): "Icon{}".format(k)  for i,j,k in zip([1,1,1,2,2,2,3,3,3,3],
+                                                                                        [0,1,2,0,1,2,0,1,2,3],
+                                                                                        range(1,11))}
     catchments = { "Sew_{}i - Sew_{}f(Catch){}{}".format(i,i,j,h): "Icon{}".format(k) for i, j, k, h in zip([1,2,2,2,3],
                                                                                           ['','','','[input]',''],
                                                                                           range(11, 16),
@@ -84,7 +88,9 @@ def names_Dict_Conf2():
 
     names = {}
 
-    sewers = {"Sew_{}i - Sew_{}f({})".format(i,i,j): "Icon{}".format(j)  for i,j in zip([1,2,2,2,2,2,3,4,4,4],[0,0,1,2,3,4,0,0,1,2])}
+    sewers = {"Sew_{}i - Sew_{}f({})".format(i,i,j): "Icon{}".format(k)  for i,j,k in zip([1,2,2,2,2,2,3,4,4,4],
+                                                                                        [0,0,1,2,3,4,0,0,1,2],
+                                                                                        range(1,11))}
     catchments = { "Sew_{}i - Sew_{}f(Catch){}{}".format(i,i,j,h): "Icon{}".format(k) for i, j, k, h in zip([2,2,3,4,4],
                                                                                           ['','[input]','','','[input]'],
                                                                                           range(11, 16),
@@ -498,17 +504,17 @@ def test_createLinks_conf1(sample_Elements,names_Dict_Conf,elements):
     
     checkLink(result_links,"Link1","Icon11","Icon16","CustomOrthogonalLine1") #Catch 1 to Conn 1
     checkLink(result_links,"Link2","Icon16","Icon21","CustomOrthogonalLine2","2") #Conn 1 to Comb 1
+    
     checkLink(result_links,"Link3","Icon21","Icon1","CustomOrthogonalLine3") #Comb 1 to sewer 1
-
     checkLink(result_links,"Link4","Icon1","Icon2","CustomOrthogonalLine4") #Sew 1 to sew 2
     checkLink(result_links,"Link5","Icon2","Icon3","CustomOrthogonalLine5")
-    checkLink(result_links,"Link6","Icon3","Icon4","CustomOrthogonalLine6")
+    checkLink(result_links,"Link6","Icon3","Icon4","CustomOrthogonalLine6") #Sew 3 to sew 4
     
     checkLink(result_links,"Link7","Icon4","Icon22","CustomOrthogonalLine7","1") #Sewer 4 to comb 2
     checkLink(result_links,"Link8","Icon12","Icon17","CustomOrthogonalLine8") #catch 2 to conn 2
     checkLink(result_links,"Link9","Icon17","Icon22","CustomOrthogonalLine9","2") #Conn 2 to comb 2
-    checkLink(result_links,"Link10","Icon22","Icon5","CustomOrthogonalLine10") #Comb 2 to sew 5
 
+    checkLink(result_links,"Link10","Icon22","Icon5","CustomOrthogonalLine10") #Comb 2 to sew 5
     checkLink(result_links,"Link11","Icon5","Icon6","CustomOrthogonalLine11") #sew5 to sew 6
     checkLink(result_links,"Link12","Icon6","Icon7","CustomOrthogonalLine12")
 
@@ -716,9 +722,14 @@ def test_updateWESTLayoutFile(initialXML, dictForWEST,modelClasses):
 
     uf.updateWESTLayoutFile(initialXML, initialXMLMOD, modelClasses, dictForWEST[0], dictForWEST[1], dictForWEST[2])
 
-    #assert isinstance(result_links, ET.Element) # Assert the result
-    #assert len(list(result_links)) == 24, "Incorrect final number of links"
-    
-    #checkLink(result_links,"Link1","Icon11","Icon16","CustomOrthogonalLine1") #Catch 1 to Conn 1
+    root = ET.parse(initialXMLMOD).getroot()
+    linksXML = root.find('.//Links')
 
-   
+    assert len(list(linksXML)) == 47, "Incorrect final number of links"
+    
+    checkLink(linksXML,"Link1","Icon25","Icon32","CustomOrthogonalLine1") #branch 1 starts
+    checkLink(linksXML,"Link2","Icon32","Icon39","CustomOrthogonalLine2") 
+    checkLink(linksXML,"Link3","Icon39","Icon1","CustomOrthogonalLine3") 
+    checkLink(linksXML,"Link4","Icon1","Icon2","CustomOrthogonalLine4") 
+    checkLink(linksXML,"Link5","Icon2","Icon3","CustomOrthogonalLine5") # branch 1 finishes
+    checkLink(linksXML,"Link6","Icon3","Icon40","CustomOrthogonalLine6") # branch 1 to connector
