@@ -52,3 +52,4 @@ DWF2022.chi
 tests/DWF2022_TEST.out
 tests/xmlTEST_RESUKT.xml
 tests/xmlTESTLongConfM.xml
+tests/updateWESTLayoutFileTEST_Result.xml

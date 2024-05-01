@@ -728,8 +728,52 @@ def test_updateWESTLayoutFile(initialXML, dictForWEST,modelClasses):
     assert len(list(linksXML)) == 47, "Incorrect final number of links"
     
     checkLink(linksXML,"Link1","Icon25","Icon32","CustomOrthogonalLine1") #branch 1 starts
-    checkLink(linksXML,"Link2","Icon32","Icon39","CustomOrthogonalLine2") 
-    checkLink(linksXML,"Link3","Icon39","Icon1","CustomOrthogonalLine3") 
-    checkLink(linksXML,"Link4","Icon1","Icon2","CustomOrthogonalLine4") 
-    checkLink(linksXML,"Link5","Icon2","Icon3","CustomOrthogonalLine5") # branch 1 finishes
-    checkLink(linksXML,"Link6","Icon3","Icon40","CustomOrthogonalLine6") # branch 1 to connector
+    checkLink(linksXML,"Link2","Icon32","Icon39","CustomOrthogonalLine2","2") 
+    checkLink(linksXML,"Link3","Icon39","Icon14","CustomOrthogonalLine3") 
+    checkLink(linksXML,"Link4","Icon14","Icon15","CustomOrthogonalLine4") 
+    checkLink(linksXML,"Link5","Icon15","Icon16","CustomOrthogonalLine5") # branch 1 finishes
+    checkLink(linksXML,"Link6","Icon16","Icon40","CustomOrthogonalLine6","1") # branch 1 to connector.
+
+    checkLink(linksXML,"Link7","Icon17","Icon18","CustomOrthogonalLine7") #branch 2 starts
+    checkLink(linksXML,"Link8","Icon18","Icon41","CustomOrthogonalLine8","1") 
+    checkLink(linksXML,"Link9","Icon26","Icon33","CustomOrthogonalLine9") 
+    checkLink(linksXML,"Link10","Icon33","Icon41","CustomOrthogonalLine10","2") 
+    checkLink(linksXML,"Link11","Icon41","Icon19","CustomOrthogonalLine11") 
+    checkLink(linksXML,"Link12","Icon19","Icon20","CustomOrthogonalLine12") 
+    checkLink(linksXML,"Link13","Icon20","Icon21","CustomOrthogonalLine13") 
+    checkLink(linksXML,"Link14","Icon21","Icon22","CustomOrthogonalLine14") # branch 2 finishes
+    checkLink(linksXML,"Link15","Icon22","Icon42","CustomOrthogonalLine15","1") # branch 2 to connector
+
+    checkLink(linksXML,"Link16","Icon23","Icon24","CustomOrthogonalLine16") #branch 3 starts
+    checkLink(linksXML,"Link17","Icon24","Icon43","CustomOrthogonalLine17","1") 
+    checkLink(linksXML,"Link18","Icon27","Icon34","CustomOrthogonalLine18") 
+    checkLink(linksXML,"Link19","Icon34","Icon43","CustomOrthogonalLine19","2") # branch 3 finishes
+    checkLink(linksXML,"Link20","Icon43","Icon44","CustomOrthogonalLine20","1") # branch 3 to connector
+
+    checkLink(linksXML,"Link21","Icon28","Icon35","CustomOrthogonalLine21") # Trunk starts
+    checkLink(linksXML,"Link22","Icon35","Icon45","CustomOrthogonalLine22","2") 
+    checkLink(linksXML,"Link23","Icon45","Icon1","CustomOrthogonalLine23") 
+    checkLink(linksXML,"Link24","Icon1","Icon2","CustomOrthogonalLine24") 
+    checkLink(linksXML,"Link25","Icon2","Icon3","CustomOrthogonalLine25") 
+    checkLink(linksXML,"Link26","Icon3","Icon4","CustomOrthogonalLine26") 
+    checkLink(linksXML,"Link27","Icon4","Icon46","CustomOrthogonalLine27","1") 
+    checkLink(linksXML,"Link28","Icon29","Icon36","CustomOrthogonalLine28") 
+    checkLink(linksXML,"Link29","Icon36","Icon46","CustomOrthogonalLine29","2") 
+    checkLink(linksXML,"Link30","Icon46","Icon40","CustomOrthogonalLine30","2") #connects branch
+    checkLink(linksXML,"Link31","Icon40","Icon5","CustomOrthogonalLine31") 
+    checkLink(linksXML,"Link32","Icon5","Icon6","CustomOrthogonalLine32") 
+    checkLink(linksXML,"Link33","Icon6","Icon7","CustomOrthogonalLine33") 
+    checkLink(linksXML,"Link34","Icon7","Icon8","CustomOrthogonalLine34") 
+    checkLink(linksXML,"Link35","Icon8","Icon47","CustomOrthogonalLine35","1") 
+    checkLink(linksXML,"Link36","Icon30","Icon37","CustomOrthogonalLine36") 
+    checkLink(linksXML,"Link37","Icon37","Icon47","CustomOrthogonalLine37","2") 
+    checkLink(linksXML,"Link38","Icon47","Icon9","CustomOrthogonalLine38") 
+    checkLink(linksXML,"Link39","Icon9","Icon10","CustomOrthogonalLine39") 
+    checkLink(linksXML,"Link40","Icon10","Icon42","CustomOrthogonalLine40","2") #connects branch
+    checkLink(linksXML,"Link41","Icon42","Icon11","CustomOrthogonalLine41") 
+    checkLink(linksXML,"Link42","Icon11","Icon12","CustomOrthogonalLine42") 
+    checkLink(linksXML,"Link43","Icon12","Icon48","CustomOrthogonalLine43","1") 
+    checkLink(linksXML,"Link44","Icon31","Icon38","CustomOrthogonalLine44")  
+    checkLink(linksXML,"Link45","Icon38","Icon48","CustomOrthogonalLine45","2") 
+    checkLink(linksXML,"Link46","Icon48","Icon44","CustomOrthogonalLine46","2") #connects branch
+    checkLink(linksXML,"Link47","Icon44","Icon13","CustomOrthogonalLine47") # Trunk finishes
