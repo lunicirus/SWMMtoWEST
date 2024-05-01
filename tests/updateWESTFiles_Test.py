@@ -267,7 +267,7 @@ def dictForWEST():
     catch = createMockCatchDict('pipe600 - pipe601(Catch)[previous]', '60', False)
     listb['PathTankInSeries'] = [sew]
     listb['WESTCatchments'] = [catch]
-    branches['pipe100 - pipe101']= listb
+    branches['pipe101']= listb
     #---------------branch 2---------------------------------------------------------
     listb2 = {} 
     sew = createMockSewerDict('pipe700 - pipe701', '70', [17,18])
@@ -275,18 +275,18 @@ def dictForWEST():
     catch = createMockCatchDict('pipe700 - pipe701(Catch)', '70', True)
     listb2['PathTankInSeries'] = [sew,sew2]
     listb2['WESTCatchments'] = [catch]
-    branches['pipe300 - pipe301']= listb2
+    branches['pipe301']= listb2
     #---------------branch 3---------------------------------------------------------
     listb3 = {} 
     sew = createMockSewerDict('pipe900 - pipe901', '90', [23,24])
     catch = createMockCatchDict('pipe900 - pipe901(Catch)', '90', True)
     listb3['PathTankInSeries'] = [sew]
     listb3['WESTCatchments'] = [catch]
-    branches['pipe400 - pipe401']= listb3
+    branches['pipe401']= listb3
 
     #--------------Connectors-----------------------------------------------
     connectorsDict = {}
-    for b, indexes in zip(['Trunk','pipe100 - pipe101','pipe300 - pipe301','pipe400 - pipe401'],[range(1,5),[5],[6],[7]]):
+    for b, indexes in zip(['Trunk','pipe101','pipe301','pipe401'],[range(1,5),[5],[6],[7]]):
         connectors= []
         for c in indexes:
             conn = createMockConnector(str(c)+'1')
@@ -717,7 +717,6 @@ def test_connectBranchToCombiner(sample_Links):
 
 def test_updateWESTLayoutFile(initialXML, dictForWEST,modelClasses):
 
-    #TODO
     initialXMLMOD = 'tests/updateWESTLayoutFileTEST_Result.xml'
 
     uf.updateWESTLayoutFile(initialXML, initialXMLMOD, modelClasses, dictForWEST[0], dictForWEST[1], dictForWEST[2])

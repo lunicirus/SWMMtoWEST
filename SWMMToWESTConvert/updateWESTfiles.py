@@ -503,6 +503,7 @@ def createPathLinks(linksXML:ET.Element, namesDict:dict[str], catchments:list[di
         sewerCatchiName = p[STW_C.NAME] + STW_C.SECTION_CATCHMENT
         sewerCatchPreviName = sewerCatchiName + STW_C.BEFORE_CATCHMENT
         seweriInputName = sewerCatchiName + STW_C.INPUT_CATCHMENT #the name of a catchment correspondant to an input associated to the i sewer section
+        branchName = p[STW_C.NAME].split(STW_C.PIPE_SEC_NAM_SEP)[1]
 
         #if the catchment has the name of the sewer section and its not attached to the end, connects the catchment before the sewer section
         if (catchiName == sewerCatchPreviName) and (not endConnection):  
@@ -521,7 +522,7 @@ def createPathLinks(linksXML:ET.Element, namesDict:dict[str], catchments:list[di
             linksXML, iLink, lastElement, endConnection, catchiName, catchModelNames, iCatch, iComb = connectCurrentCatchment(namesDict, catchments, linksXML, iLink, lastElement, catchModelNames, iCatch, iComb)
 
         #Joins the branch
-        if (branch is not None) and (branch[0] == p[STW_C.NAME]):
+        if (branch is not None) and (branch[0] == branchName):
             linksXML, iLink, lastElement = addLink(linksXML, iLink, lastElement, branch[1], W_C.XML_INFLOW_SUFFIX2)
             branch = branchesR.popitem() if len(branchesR) > 0 else None
 
