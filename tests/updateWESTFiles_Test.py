@@ -211,7 +211,7 @@ def initialXML():
         ET.SubElement(props, 'Prop', {'Name': f'InstanceName', 'Value': f'Connector_info_{i}'})
         ET.SubElement(props, 'Prop', {'Name': f'InstanceDisplayName', 'Value': f'Connector_info_{i}'})
         ET.SubElement(props, 'Prop', {'Name': f'ClassName', 'Value': 'genericClass'})
-        ET.SubElement(props, 'Prop', {'Name': f'Desc', 'Value': 'Connector'})
+        ET.SubElement(props, 'Prop', {'Name': f'Desc', 'Value': 'Connector_info'})
         ET.SubElement(props, 'Prop', {'Name': f'Unit', 'Value': ''})
         favorites = ET.SubElement(submodel, 'Favorites')
         submodels.append(submodel)

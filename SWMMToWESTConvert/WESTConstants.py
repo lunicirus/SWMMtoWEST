@@ -2,7 +2,7 @@
 #Descriptions of the models 
 SEWER = 'Sewer'
 CATCHMENT = 'Catchment'
-CONNECTOR = 'Connector'
+CONNECTOR = 'Connector_info'
 COMBINER = 'Two combiner'
 
 #Start of the models' names
