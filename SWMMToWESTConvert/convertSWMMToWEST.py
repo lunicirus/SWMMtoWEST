@@ -214,7 +214,7 @@ def createInputWEST(name:str,input:str,tsInputs:'pd.DataFrame',isEnd:bool=True)-
     return inputWEST
 
 def getPathElements(dfs:list['pd.DataFrame'],elements:'pd.DataFrame', initialElements:dict,
-                    timePatterns:dict[list],tSDischarging:'pd.DataFrame', firstPipe:str)->tuple[list[dict],list[dict]]:
+                    timePatterns:dict[list],tSDischarging:'pd.DataFrame', firstPipe:str, NTanks:int)->tuple[list[dict],list[dict],int]:
     """
         Converts the pipe sections into list of tank in series models and the flowelements into a list of catchment models.
         The model of each pipe section has the name "initial-final pipe", the slope, diameter, and total length.
@@ -226,13 +226,15 @@ def getPathElements(dfs:list['pd.DataFrame'],elements:'pd.DataFrame', initialEle
         timePatterns (dict[list]): Time patterns of the network.
         tSDischarging (pd.DataFrame): Time series discharging into the path.
         firstPipe (str): The name of the first pipe of the path.
+        NTanks (int): Number of tanks already existent in the network.
     Returns:
-        tuple[list[dict],list[dict]]: list of tank in series models and catchments models of the path.
+        tuple[list[dict],list[dict],int]: list of tank in series models and catchments models of the path. 
+                                          Current number of tanks in the network.
     """    
     pipesSection = []
     catchments= []
     
-    tankIndex = 1
+    tankIndex = NTanks
     firstSection = True
     isEnd = True
     
@@ -279,9 +281,9 @@ def getPathElements(dfs:list['pd.DataFrame'],elements:'pd.DataFrame', initialEle
     print("Final number of catchments: ", len(catchments))
     
     if pipesSection:
-        print("Final number of tanks in series:", pipesSection[-1][STW_C.TANK_INDEXES][-1])
+        print("Final number of tanks in series:", tankIndex - NTanks)
                             
-    return pipesSection, catchments
+    return pipesSection, catchments, tankIndex
 
 def addCatchmentsFromFlowElement(element:'pd.Serie', timePatterns:dict[list], tSDischarging:'pd.DataFrame', 
                                    catchments:list[dict], pipeSectionName:str, isEnd:bool=True)->list[dict]:
