@@ -50,6 +50,3 @@ graphs/__pycache__/WESTConstants.cpython-310.pyc
 02-Output/01-Graphs/TPatternsSWMM.png
 DWF2022.chi
 tests/DWF2022_TEST.out
-tests/xmlTEST_RESUKT.xml
-tests/xmlTESTLongConfM.xml
-tests/updateWESTLayoutFileTEST_Result.xml

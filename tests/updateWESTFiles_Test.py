@@ -1,4 +1,5 @@
 import pytest
+import os
 import xml.etree.ElementTree as ET
 
 from SWMMToWESTConvert import updateWESTfiles as uf
@@ -24,7 +25,7 @@ def sample_Submodel():
 @pytest.fixture
 def sample_Elements():
 
-    tree = ET.parse('tests/xmlTESTShortConf.xml')
+    tree = ET.parse('tests/xmlTESTBlank.xml')
     root = tree.getroot()  
     
     return root, tree
@@ -46,7 +47,7 @@ def names_Dict_Conf():
                                                                                           [0,1,2,3,0,1,2,0,1,2],
                                                                                           range(1,11))}
     catchments = { "Sew_{}i - Sew_{}f(Catch){}{}".format(i,i,j,h): "Icon{}".format(k) for i, j, k, h in zip([1,1,2,2,3],
-                                                                                          ['','','','[input]',''],
+                                                                                          ['','','[input]','',''],
                                                                                           range(11, 16),
                                                                                           ['[previous]','','','','']
                                                                                           )}
@@ -69,7 +70,7 @@ def names_Dict_Conf1():
                                                                                         [0,1,2,0,1,2,0,1,2,3],
                                                                                         range(1,11))}
     catchments = { "Sew_{}i - Sew_{}f(Catch){}{}".format(i,i,j,h): "Icon{}".format(k) for i, j, k, h in zip([1,2,2,2,3],
-                                                                                          ['','','','[input]',''],
+                                                                                          ['','','[input]','',''],
                                                                                           range(11, 16),
                                                                                           ['','[previous]','','','[previous]']
                                                                                           )}
@@ -92,7 +93,7 @@ def names_Dict_Conf2():
                                                                                         [0,0,1,2,3,4,0,0,1,2],
                                                                                         range(1,11))}
     catchments = { "Sew_{}i - Sew_{}f(Catch){}{}".format(i,i,j,h): "Icon{}".format(k) for i, j, k, h in zip([2,2,3,4,4],
-                                                                                          ['','[input]','','','[input]'],
+                                                                                          ['','[input]','','[input]',''],
                                                                                           range(11, 16),
                                                                                           ['[previous]','','','','']
                                                                                           )}
@@ -776,3 +777,8 @@ def test_updateWESTLayoutFile(initialXML, dictForWEST,modelClasses):
     checkLink(linksXML,"Link45","Icon38","Icon48","CustomOrthogonalLine45","2") 
     checkLink(linksXML,"Link46","Icon48","Icon44","CustomOrthogonalLine46","2") #connects branch
     checkLink(linksXML,"Link47","Icon44","Icon13","CustomOrthogonalLine47") # Trunk finishes
+
+    #Cleaning
+    os.remove(initialXMLMOD)
+    os.remove('tests/xmlTESTLongConfM.xml')
+    
