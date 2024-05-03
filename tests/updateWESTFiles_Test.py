@@ -114,8 +114,8 @@ def elements():
               {'PipeName': 'Sew_3i - Sew_3f','tanksIndexes': [8,9,10]}]
     catchments = [{'CatchmentName': 'Sew_1i - Sew_1f(Catch)[previous]','EndNode': False},
                   {'CatchmentName': 'Sew_1i - Sew_1f(Catch)','EndNode': True},
-                  {'CatchmentName': 'Sew_2i - Sew_2f(Catch)','EndNode': True},
                   {'CatchmentName': 'Sew_2i - Sew_2f(Catch)[input]','EndNode': True},
+                  {'CatchmentName': 'Sew_2i - Sew_2f(Catch)','EndNode': True},
                   {'CatchmentName': 'Sew_3i - Sew_3f(Catch)','EndNode': True}]
 
     return sewers, catchments
@@ -128,8 +128,8 @@ def elements1():
               {'PipeName': 'Sew_3i - Sew_3f','tanksIndexes': [7,8,9,10]}]
     catchments = [{'CatchmentName': 'Sew_1i - Sew_1f(Catch)','EndNode': True},
                   {'CatchmentName': 'Sew_2i - Sew_2f(Catch)[previous]','EndNode': False},
-                  {'CatchmentName': 'Sew_2i - Sew_2f(Catch)','EndNode': True},
                   {'CatchmentName': 'Sew_2i - Sew_2f(Catch)[input]','EndNode': True},
+                  {'CatchmentName': 'Sew_2i - Sew_2f(Catch)','EndNode': True},
                   {'CatchmentName': 'Sew_3i - Sew_3f(Catch)[previous]','EndNode': False}]
 
     return sewers, catchments
@@ -144,8 +144,8 @@ def elements2():
     catchments = [{'CatchmentName': 'Sew_2i - Sew_2f(Catch)[previous]','EndNode': False},
                   {'CatchmentName': 'Sew_2i - Sew_2f(Catch)[input]','EndNode': True},
                   {'CatchmentName': 'Sew_3i - Sew_3f(Catch)','EndNode': True},
-                  {'CatchmentName': 'Sew_4i - Sew_4f(Catch)','EndNode': True},
-                  {'CatchmentName': 'Sew_4i - Sew_4f(Catch)[input]','EndNode': True}]
+                  {'CatchmentName': 'Sew_4i - Sew_4f(Catch)[input]','EndNode': True},
+                  {'CatchmentName': 'Sew_4i - Sew_4f(Catch)','EndNode': True}]
 
     return sewers, catchments
 

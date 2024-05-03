@@ -512,13 +512,13 @@ def createPathLinks(linksXML:ET.Element, namesDict:dict[str], catchments:list[di
         #Connects the tanks of the sewer section 
         linksXML, iLink, lastElement = connectPipeSection(namesDict, linksXML, iLink, lastElement, p)
 
-        #Connects the catchment if it connects to the end of the sewer section 
-        if (catchiName == sewerCatchiName)  and endConnection:
-            linksXML, iLink, lastElement, endConnection, catchiName, catchModelNames, iCatch, iComb = connectCurrentCatchment(namesDict, catchments, linksXML, iLink, lastElement, catchModelNames, iCatch, iComb)
-
         #Connects a input catchment if exists. If there was another catchment attached to the pipe section (at the beggining or end) 
         #the catchmenti was updated and this will add another one for the input 
         if (catchiName == seweriInputName):
+            linksXML, iLink, lastElement, endConnection, catchiName, catchModelNames, iCatch, iComb = connectCurrentCatchment(namesDict, catchments, linksXML, iLink, lastElement, catchModelNames, iCatch, iComb)
+
+        #Connects the catchment if it connects to the end of the sewer section 
+        if (catchiName == sewerCatchiName)  and endConnection:
             linksXML, iLink, lastElement, endConnection, catchiName, catchModelNames, iCatch, iComb = connectCurrentCatchment(namesDict, catchments, linksXML, iLink, lastElement, catchModelNames, iCatch, iComb)
 
         #Joins the branch
@@ -567,7 +567,7 @@ def getModelsByTypeAndSetClasses(root:ET.Element, modelClasses:dict[str], nBranc
     print("The number of sewers found were ", nSewers, ", catchments ", nCatchments, ", connectors ", nConnectors, " and combiners ", nCombiners)
     assert nCatchments == nConnectors , f"The number of catchments and connectors model instances are not equal"
     assert nCombiners == nCatchments + nBranches, f"The number of combiners is not equal to the number of catchments plus the number of branches"
-    assert nSewers == nTanks, f"The number of sewer models is not equal to the number of tank in series"
+    assert nSewers == nTanks, f"The number of sewer models is not equal to the number of tank in series ({nTanks})"
 
     XMLElements = {}
     XMLElements[STW_C.SEWERS] = XMLSewers
@@ -663,14 +663,7 @@ def updateWESTLayoutFile(layoutXMLPath:str, layoutXMLPath_MOD:str, modelClasses:
 
         # Adds the properties of the elements within the branch
         branch = branchesModels[br]
-        root, namesDict, iCatchN, iCombN = setPathElementsProp(root, branch[STW_C.PATH], branch[STW_C.WCATCHMENTS], connAttributes[br], XMLsByType, iCatch, iComb)
-        
-        #Create the links
-        linksXML, lastPathElement, iLink, iCatch, iComb = createPathLinks(linksXML, namesDict, branch[STW_C.WCATCHMENTS], branch[STW_C.PATH], iLink, iCatch, iComb)
-        assert iCatch == iCatchN, f"The number of updated catchments in the properties and the path are not the same"
-        assert iComb == iCombN, f"The number of updated combiners in the properties and the path are not the same"
-
-        linksXML, iLink, iComb, combName = connectBranchToCombiner(linksXML, lastPathElement, iLink, XMLsByType[STW_C.COMBINERS], iComb)
+        iLink, iCatch, iComb, root, linksXML, combName = addBranchToLayoutFile(connAttributes[br], branch, iLink, iCatch, iComb, root, linksXML, XMLsByType)
         
         combiners[br] = combName
         
@@ -683,4 +676,22 @@ def updateWESTLayoutFile(layoutXMLPath:str, layoutXMLPath_MOD:str, modelClasses:
     # Save the modified XML to a new file
     ET.indent(tree, space="\t", level=0)
     tree.write(layoutXMLPath_MOD)
+
+def addBranchToLayoutFile(connectors, branch, iLink, iCatch, iComb, root, linksXML, XMLsByType):
+    
+    sewerSect = branch[STW_C.PATH]
+    catchments = branch[STW_C.WCATCHMENTS].copy()
+
+    assert len(catchments) == len(connectors), f"The number of catchments and connectors in the branch are not the same."
+
+    root, namesDict, iCatchN, iCombN = setPathElementsProp(root, sewerSect, catchments, connectors, XMLsByType, iCatch, iComb)
+    linksXML, lastPathElement, iLink, iCatch, iComb = createPathLinks(linksXML, namesDict, catchments, 
+                                                                      sewerSect, iLink, iCatch, iComb)
+    
+    assert iCatch == iCatchN, f"The number of updated catchments in the properties and the path are not the same"
+    assert iComb == iCombN, f"The number of updated combiners in the properties and the path are not the same"
+
+    linksXML, iLink, iComb, combName = connectBranchToCombiner(linksXML, lastPathElement, iLink, XMLsByType[STW_C.COMBINERS], iComb)
+    
+    return iLink,iCatch,iComb,root,linksXML,combName
     
