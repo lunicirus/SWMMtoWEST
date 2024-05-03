@@ -673,6 +673,8 @@ def updateWESTLayoutFile(layoutXMLPath:str, layoutXMLPath_MOD:str, modelClasses:
     iLink, iCatch, iComb, root, linksXML, lastPathElement = addPathToLayoutFile(connAttributes[STW_C.TRUNK], trunkModels[0], trunkModels[1], 
                                                                                 iLink, iCatch, iComb, root, linksXML, XMLsByType,combiners)
 
+    print("The last element in the network was ", lastPathElement)
+
     # Save the modified XML to a new file
     ET.indent(tree, space="\t", level=0)
     tree.write(layoutXMLPath_MOD)
