@@ -494,7 +494,7 @@ def test_createLinks_conf1(sample_Elements,names_Dict_Conf,elements):
     sewerSections = elements[0]
     catchments = elements[1]
 
-    result_links, lastElement, linki, catchi, comb1 = uf.createPathLinks(linksEle, names_Dict_Conf, catchments, sewerSections, 1, 1, 1)
+    result_links, lastElement, linki, catchi, comb1 = uf.createPathLinks(linksEle, names_Dict_Conf, catchments, sewerSections, 1, 1, 1, None)
 
     #ET.indent(tree, space="\t", level=0)
     #tree.write('tests/xmlTEST_Mod1.xml')
@@ -542,7 +542,7 @@ def test_createLinks_conf2(sample_Elements,names_Dict_Conf1,elements1):
     sewerSections = elements1[0]
     catchments = elements1[1]
 
-    result_links, lastElement, linki, catchi, comb1  = uf.createPathLinks(links_element, names_Dict_Conf1, catchments, sewerSections,1,1,1)
+    result_links, lastElement, linki, catchi, comb1  = uf.createPathLinks(links_element, names_Dict_Conf1, catchments, sewerSections,1,1,1,None)
 
     #ET.indent(tree, space="\t", level=0)
     #tree.write('tests/xmlTEST_Mod1.xml')
@@ -587,7 +587,7 @@ def test_createLinks_conf3(sample_Elements,names_Dict_Conf2,elements2):
     sewerSections = elements2[0]
     catchments = elements2[1]
 
-    result_links, lastElement, linki, catchi, comb1  = uf.createPathLinks(links_element, names_Dict_Conf2, catchments, sewerSections,1,1,1)
+    result_links, lastElement, linki, catchi, comb1  = uf.createPathLinks(links_element, names_Dict_Conf2, catchments, sewerSections,1,1,1,None)
 
     #ET.indent(tree, space="\t", level=0)
     #tree.write('tests/xmlTEST_Mod1.xml')

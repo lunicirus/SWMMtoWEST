@@ -469,7 +469,7 @@ def connectBranchToCombiner(linksXML:ET.Element, lastBranchEle:str, iLink:int, X
     return linksXML, iLink, iComb, combName
 
 def createPathLinks(linksXML:ET.Element, namesDict:dict[str], catchments:list[dict], sewerSections:list[dict], iLink:int, 
-                    iCatch:int, iComb:int, branches:dict[str] = None)->tuple[ET.Element,str,int,int,int]:
+                    iCatch:int, iComb:int, branches:dict[str])->tuple[ET.Element,str,int,int,int]:
     """
         Creates all the links of a path. Loops the sewer sections adding links between the tanks composing them and 
         links the catchments with the same name of the sewer section before or after the tank according to its position property.
@@ -482,6 +482,7 @@ def createPathLinks(linksXML:ET.Element, namesDict:dict[str], catchments:list[di
         linki (int): Index of the next link to be created for the model. 
         iCatch (int): Index of the next catchment to be created for the model.
         iComb (int): Index of the next combiner to be created for the model.
+        branches (dict[str]): The relationship between the name of the branch and the name of the combiner at the end of it.
     Returns:
         tuple[ET.Element,str,int,int,int]: Updated links element of the WEST's '.Layout.xml' file. Last element connected in the path. 
                                       Indexes of the next link, catchment and combiner.
@@ -647,8 +648,6 @@ def updateWESTLayoutFile(layoutXMLPath:str, layoutXMLPath_MOD:str, modelClasses:
                                            in the branch. Each branch dictionary has two elements one list of sewers, one list of the catchments (CONSTANTS as keys).
         connAttributes (list): Attributes of the connectors. all connectors have the same properties.
     """        
-    
-    trunkPipeSections = trunkModels[0]
     iLink, iCatch, iComb = 1, 1, 1
 
     tree = ET.parse(layoutXMLPath) # Read the XML file
@@ -663,35 +662,51 @@ def updateWESTLayoutFile(layoutXMLPath:str, layoutXMLPath_MOD:str, modelClasses:
 
         # Adds the properties of the elements within the branch
         branch = branchesModels[br]
-        iLink, iCatch, iComb, root, linksXML, combName = addBranchToLayoutFile(connAttributes[br], branch, iLink, iCatch, iComb, root, linksXML, XMLsByType)
-        
+
+        iLink, iCatch, iComb, root, linksXML, lastPathElement = addPathToLayoutFile(connAttributes[br], branch[STW_C.PATH], branch[STW_C.WCATCHMENTS], 
+                                                                                    iLink, iCatch, iComb, root, linksXML, XMLsByType)
+        linksXML, iLink, iComb, combName = connectBranchToCombiner(linksXML, lastPathElement, iLink, XMLsByType[STW_C.COMBINERS], iComb)
+
         combiners[br] = combName
         
     # Trunk
-    root, namesDict, iCatchN, iCombN = setPathElementsProp(root, trunkPipeSections, trunkModels[1], connAttributes[STW_C.TRUNK], XMLsByType, iCatch, iComb) #Add properties
-    linksXML, lastPathElement, iLink, iCatch, iComb = createPathLinks(linksXML, namesDict, trunkModels[1], trunkPipeSections, iLink, iCatch, iComb, combiners) #Create the links of the trunk
-    assert iCatch == iCatchN, f"The number of updated catchments in the properties and the path are not the same"
-    assert iComb == iCombN, f"The number of updated combiners in the properties and the path are not the same"
+    iLink, iCatch, iComb, root, linksXML, lastPathElement = addPathToLayoutFile(connAttributes[STW_C.TRUNK], trunkModels[0], trunkModels[1], 
+                                                                                iLink, iCatch, iComb, root, linksXML, XMLsByType,combiners)
 
     # Save the modified XML to a new file
     ET.indent(tree, space="\t", level=0)
     tree.write(layoutXMLPath_MOD)
 
-def addBranchToLayoutFile(connectors, branch, iLink, iCatch, iComb, root, linksXML, XMLsByType):
-    
-    sewerSect = branch[STW_C.PATH]
-    catchments = branch[STW_C.WCATCHMENTS].copy()
-
+def addPathToLayoutFile(connectors:list[dict], sewerSect:list[dict], catchments:list[dict], iLink:int, iCatch:int, iComb:int,
+                         root:ET.Element, linksXML:ET.Element, XMLsByType:dict[str,dict[str,ET.Element]], 
+                         branches:dict[str,str]=None)->tuple[int,int,int,ET.Element,ET.Element,str]:
+    """
+        Creates or updates the properties of the elements on the path and create the links between all its elements.
+    Args:
+        connectors (list[dict]): Attributes of all connectors in the path.
+        sewerSect (list[dict]): Attributes of all pipe sections in the path. Are assumed to be in order.
+        catchments (list[dict]): Attributes of all catchments in the path. Are assumed to be in order.
+        iLink (int): Index of the next link to create.
+        iCatch (int): Index of the next catchment to update.
+        iComb (int): Index of the next combiner to update
+        root (ET.Element): Root element of the layout XML file of the WEST model.
+        linksXML (ET.Element): Links element of the WEST's '.Layout.xml' file.
+        XMLsByType (dict[str,dict[str,ET.Element]]): The XMLs of the elements by type. Key is the type of element e.g. STW_C.SEWERS. Then, keys are the
+                                         index of element by type i.e., from 1 to the number of sewers in the Layout.xml file.
+        branches (dict[str,str], optional): The relationship between the name of the branch and the name of the combiner at the end of it. Defaults to None.
+    Returns:
+        tuple[int,int,int,ET.Element,ET.Element,str]: Indexes of the next link, catchment, and combiner updated. 
+                                                    Updated root and links element of the layout XML file of the WEST model.
+                                                    Name of the last submodel connected to the network. 
+    """    
     assert len(catchments) == len(connectors), f"The number of catchments and connectors in the branch are not the same."
 
     root, namesDict, iCatchN, iCombN = setPathElementsProp(root, sewerSect, catchments, connectors, XMLsByType, iCatch, iComb)
     linksXML, lastPathElement, iLink, iCatch, iComb = createPathLinks(linksXML, namesDict, catchments, 
-                                                                      sewerSect, iLink, iCatch, iComb)
+                                                                      sewerSect, iLink, iCatch, iComb, branches)
     
     assert iCatch == iCatchN, f"The number of updated catchments in the properties and the path are not the same"
     assert iComb == iCombN, f"The number of updated combiners in the properties and the path are not the same"
 
-    linksXML, iLink, iComb, combName = connectBranchToCombiner(linksXML, lastPathElement, iLink, XMLsByType[STW_C.COMBINERS], iComb)
-    
-    return iLink,iCatch,iComb,root,linksXML,combName
+    return iLink, iCatch, iComb, root, linksXML, lastPathElement
     
