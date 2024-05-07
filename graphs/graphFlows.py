@@ -49,14 +49,14 @@ def plotComparisonsComplete(measured, westOriginal, west, figName,colors):
 
     west.plot(ax=ax, alpha=0.8, linewidth=2, color= colors[2]);
     
-    ax= util.modifyForPpt(ax)
+    #ax= util.modifyForPpt(ax)
         
     ax.set_ylabel("Flow rate (m³/h)")
     
     ax.legend(ncol=3,loc='upper center',bbox_to_anchor=(.45,-.22), framealpha=0);#puts the figure in the bottom center with 4 col
     util.removeTopRightFrame(ax)
 
-    fig1.savefig('03-Graphs/'+'Comparison'+figName+'.png', dpi=200, bbox_inches='tight',transparent=True); #saves the fig
+    fig1.savefig('../02-Output/01-Graphs/'+'Comparison'+figName+'.png', dpi=200, bbox_inches='tight',transparent=True); #saves the fig
    
 
 #Assumes values are in m3/h

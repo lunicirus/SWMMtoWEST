@@ -5,29 +5,34 @@ import PCSWMMConstants as PSC
 import graphConstants as GC
 import WESTConstants as WC
 
+ 
+def processMeassuredData(filePath:str, colsInLps:list[str], colsInm3h:list[str])->pd.DataFrame:
+    """
+        Converts a csv file of measurements into a dataframe, with index the datetime and columns represent a location. 
+        The file should have a column named MC.INDEX_COL which will be used as index. 
+        Only columns with names in colsInLps or colsInm3h would be used.
+    Args:
+        filePath (str): Path to the file with the timeseries of values meassured in the field.
+        colsInLps (list[str]): Names of the columns which values are in lps.
+        colsInm3h (list[str]): Names of the columns which values are in m3/h.
+    Returns:
+        pd.DataFrame: Clean dataframe with values in m3/h.
+    """    
+    try:
+        flowVals = pd.read_csv(filePath, delimiter = ',',index_col=[MC.INDEX_COL])
+    except ValueError as e:
+        raise  ValueError("The column '" + MC.INDEX_COL + "' does not exist in the CSV file. Please check the column name as this is used as index.") from e
 
-#Columns separated by their units
-flowsLs = [MC.LIMOILOU_ME_SANI,MC.LIMOILOU_ME_PLUV,MC.BEAUPORT_ME_1,MC.BEAUPORT_ME_2,MC.BEAUPORT_ME_3,
-            MC.STSACREMENT_ME_AF,MC.STSACREMENT_ME_EF,MC.STSACREMENT_ME_R,MC.STSACREMENT_ME_D]
-
-flowsm3h = [MC.ESTA_ME,MC.PASCAL_ME,MC.NO_ME,MC.NO_ME_PLUV]
-
-#Some values are in l/s and some in m3/h
-#Returns a dataframe with the values in m3/h  
-def processMeassuredData(file):
-
-    # create a dataframe with the data from the file 
-    flowVals = pd.read_csv(file, delimiter = ',',index_col=['Date'])
-    flowVals.index = pd.to_datetime(flowVals.index, format='%d/%m/%y %H:%M')
-    #convert string values to numeric replace invalid values as null
-    flowVals= flowVals.apply(pd.to_numeric, errors='coerce')
+    flowVals.index = pd.to_datetime(flowVals.index, format='%d/%m/%y %H:%M') #converts the index values to datetime
+    flowVals= flowVals.apply(pd.to_numeric, errors='coerce') #convert string values to numeric replace invalid values as null
 
     #transformation of the units and renaming the columns
-    dfLs = flowVals[flowsLs].copy()
+    dfLs = flowVals[colsInLps].copy()
     dfFlowsLsTom3h= dfLs*3.6
     dfFlowsLsTom3h.columns = dfFlowsLsTom3h.columns.str.replace('l/s', 'm³/h')
+
     #joining dataframes to create the original complete dataframe
-    dfFlowsm3h = flowVals[flowsm3h].copy()
+    dfFlowsm3h = flowVals[colsInm3h].copy()
     dfFlowsm3h = dfFlowsm3h.join(dfFlowsLsTom3h).copy()
 
     #checks that the join was properly done
@@ -39,30 +44,35 @@ def processMeassuredData(file):
 
     return dfFlowsm3h
 
-
-# assumes values are in CMS, m3/s
-# returns values in m3/h
-def getModelData(file,startDate,endDate,renameDict=None):
-
-    # create a dataframe with the data from the file 
-    flowModelVals = pd.read_csv(file, delimiter = ',')
+def processSWMMOutFlowData(filePath:str, startDate:'Timestamp', endDate:'Timestamp', renameDict:dict[str,str]=None)->pd.DataFrame:
+    """
+        Creates a csv file with flow values from SWMM into a dataframe with values within time between 
+        the startDate (inclusive) and the endDate (exclusive). 
+    Args:
+        filePath (str): Path to the file with the timeseries of flow values in m3/s (CMS) from SWMM.
+        startDate (Timestamp): _description_
+        endDate (Timestamp): _description_
+        renameDict (dict[str,str], optional): _description_. Defaults to None.
+    Returns:
+        pd.DataFrame: Clean dataframe with values in m3/h.
+    """    
+    flowModelVals = pd.read_csv(filePath, delimiter = ',')
     flowModelVals.columns = flowModelVals.columns.str.replace(' ', '') #Remove white spaces from columns names
     
-    #Combines and formats the date and time. And set it as the index
-    flowModelVals[GC.LONGDATE_LBL] = flowModelVals[PSC.DATE_LBL] + " " + flowModelVals[PSC.TIME_LBL] #concat date and time columns
+    #Creates the datetime values to be the index----------------------
+    try:
+        flowModelVals[GC.LONGDATE_LBL] = flowModelVals[PSC.DATE_LBL] + " " + flowModelVals[PSC.TIME_LBL] #concat date and time columns
+    except KeyError as e:
+        raise  KeyError("The columns '" + PSC.DATE_LBL + "' and '" + PSC.TIME_LBL + "' do not exist in the CSV file. Please check the column names as these are used as index.") from e
+    
     flowModelVals.drop(columns=[PSC.DATE_LBL, PSC.TIME_LBL],inplace=True) #removes redundant columns
     flowModelVals[GC.LONGDATE_LBL]= pd.to_datetime(flowModelVals[GC.LONGDATE_LBL],format='%m/%d/%Y %H:%M:%S') # formats date
     flowModelVals.set_index(GC.LONGDATE_LBL,inplace=True)
+    #-------------------------------------------------------------------
 
-    # convert values to m3/h
-    flowModelValsm3h = flowModelVals*3600
+    flowModelValsm3h = flowModelVals*3600 # convert values to m3/h
+    flowModelValsm3h = flowModelValsm3h[(flowModelValsm3h.index >= startDate)&(flowModelValsm3h.index < endDate)] # Removes values outside the evaluated period
 
-    # Removes values outside the evaluated period
-    flowModelValsm3h = flowModelValsm3h[(flowModelValsm3h.index >= startDate)&(flowModelValsm3h.index < endDate)]
-
-    # renames columns
-    #flowModelVals.rename(columns={LIMOILOU_COL: "Limoilou", PASCAL_COL: "Pascal", STSACRA_C:"St-Sacrement"},inplace=True)
-    
     if renameDict is not None:
         flowModelValsm3h.rename(columns=renameDict,inplace=True)
     
