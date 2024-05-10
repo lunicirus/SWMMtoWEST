@@ -46,13 +46,12 @@ def processMeassuredData(filePath:str, colsInLps:list[str], colsInm3h:list[str])
 
 def processSWMMOutFlowData(filePath:str, startDate:'Timestamp', endDate:'Timestamp', renameDict:dict[str,str]=None)->pd.DataFrame:
     """
-        Creates a csv file with flow values from SWMM into a dataframe with values within time between 
-        the startDate (inclusive) and the endDate (exclusive). 
+        Converts a csv file with flow values from SWMM into a dataframe with values within the evaluation time period. 
     Args:
         filePath (str): Path to the file with the timeseries of flow values in m3/s (CMS) from SWMM.
-        startDate (Timestamp): _description_
-        endDate (Timestamp): _description_
-        renameDict (dict[str,str], optional): _description_. Defaults to None.
+        startDate (Timestamp): Start date of the evaluation period (inclusive). 
+        endDate (Timestamp): End date of the evaluation period (exclusive).
+        renameDict (dict[str,str], optional): Names of the columns as keys and the new column names as values. Defaults to None.
     Returns:
         pd.DataFrame: Clean dataframe with values in m3/h.
     """    
@@ -78,37 +77,45 @@ def processSWMMOutFlowData(filePath:str, startDate:'Timestamp', endDate:'Timesta
     
     return flowModelValsm3h
 
+def getDFWESTResults(filePath:str, startDate:'Timestamp', endDate:'Timestamp', dictRenames:dict[str,str]=None)->pd.DataFrame:
+    """
+        Converts a csv file with flow values from WEST into a dataframe with values within evaluation time period.
+    Args:
+        filePath (str): Path to the file with the timeseries of flow values in m3/d from WEST and time in days.
+        startDate (Timestamp): Start date of the evaluation period (inclusive). 
+        endDate (Timestamp): End date of the evaluation period (exclusive).
+        renameDict (dict[str,str], optional): Names of the columns as keys and the new column names as values. Defaults to None.
+    Returns:
+        pd.DataFrame: Clean dataframe with values in m3/h.
+    """    
+    WTP_WEST_Results = pd.read_csv(filePath, delimiter = ',')
+    WTP_WEST_Results = WTP_WEST_Results.drop(WTP_WEST_Results.index[0]) #drops the row with units
 
-#Assumes values come in m3/d, it should not have the row of units
-#Returns values in m3/h
-def getDFWESTResults(file,startDate,endDate,dictRenames=None):
-
-    WTP_WEST_Results = pd.read_csv(file, delimiter = ',')
-
-    #In case the simulation in WEST was not started in day 0, it shifts the whole dataset to start at 0
-    WTP_WEST_Results[WC.TIME_WEST] = WTP_WEST_Results[WC.TIME_WEST]-WTP_WEST_Results[WC.TIME_WEST].min() 
+    #Calculates the dates to be used as index
+    WTP_WEST_Results[WC.TIME_WEST] = WTP_WEST_Results[WC.TIME_WEST]-WTP_WEST_Results[WC.TIME_WEST].min() #In case the simulation in WEST was not started in day 0, it shifts the whole dataset to start at 0
+    WTP_WEST_Results[WC.TIME_WEST] = pd.to_timedelta(WTP_WEST_Results[WC.TIME_WEST], unit='D') # Converts the "Days" column to timedelta objects (days) 
+    WTP_WEST_Results[GC.DATE_LBL] = startDate + WTP_WEST_Results[WC.TIME_WEST]  # Calculates the date base on the starting date 
     
-    # Converts the "Days" column to timedelta objects (days) 
-    WTP_WEST_Results[WC.TIME_WEST] = pd.to_timedelta(WTP_WEST_Results[WC.TIME_WEST], unit='D')
-    # Calculates the date base on the starting date 
-    WTP_WEST_Results[GC.DATE_LBL] = startDate + WTP_WEST_Results[WC.TIME_WEST] 
+    #Removes extra records and set the index
+    WTP_WEST_ResultsCut= WTP_WEST_Results[WTP_WEST_Results[GC.DATE_LBL]< endDate] # rows if they are outside the date range being evaluated 
+    WTP_WEST_ResultsCut = WTP_WEST_ResultsCut.drop(columns=[WC.TIME_WEST]).set_index(GC.DATE_LBL) #Removes unnecesary columns and set the index
     
-    #Removes extra records if they are outside the range being evaluated 
-    WTP_WEST_ResultsCut= WTP_WEST_Results[WTP_WEST_Results[GC.DATE_LBL]< endDate]
-    #Removes unnecesary columns and set the index
-    WTP_WEST_ResultsCut = WTP_WEST_ResultsCut.drop(columns=[WC.TIME_WEST]).set_index(GC.DATE_LBL)
-    
-    # pass from m3/d to m3/h
-    dfWEST = WTP_WEST_ResultsCut /24
-
-    #Renames columns for the graph
-    dfWEST = renameWEST(dfWEST.copy())
+    #Formating, change the data units and column names
+    dfWEST = WTP_WEST_ResultsCut /24 # from m3/d to m3/h
+    dfWEST = renameWEST(dfWEST.copy()) #Renames columns for the graph
    
     return dfWEST
 
-
-def renameWEST(dfWEST, dictRenames=None):
-
+def renameWEST(dfWEST:pd.DataFrame, dictRenames:dict[str,str]=None)->pd.DataFrame:
+    """
+        Renames the columns of a dataframe. In the case of no dictRenamesor, all the columns are renamed, otherwise
+        as many columns as found in the dictionary.
+    Args:
+        dfWEST (pd.DataFrame): Dataframe with columns using the format of WEST (e.g., '.Element.Q_In' or '.Element.Q_Out')
+        dictRenames (dict[str,str], optional): Names of the columns as keys and the new column names as values. Defaults to None.
+    Returns:
+        pd.DataFrame: The dfWEST with the columns renamed.
+    """    
     if dictRenames is None:
         dfWEST.columns = dfWEST.columns.str.extract(r'\.\w+_(\d+)\.Q_(\w+)').apply(lambda x: f'{x[0]} ({x[1]})', axis=1)
     else:
@@ -116,16 +123,29 @@ def renameWEST(dfWEST, dictRenames=None):
 
     return dfWEST
 
-def sortColumnsWEST(dfWEST):
-
+def sortColumnsWEST(dfWEST:pd.DataFrame)->pd.DataFrame:
+    """
+        Sorts a dataframe by the index in the name of the columns. 
+        Columns are assumed to have the format "Element index"
+    Args:
+        dfWEST (pd.DataFrame): Dataframe to be sorted.
+    Returns:
+        pd.DataFrame: Sorted dataframe with columns ascending by the index inside the name of the columns 
+    """    
     sorted_columns = sorted(dfWEST.columns, key=lambda x: (int(x.split()[0]), x.split()[1]))
 
     dfWEST = dfWEST[sorted_columns]
 
     return dfWEST
 
-def checkAverageColumnsIncrements(df):
-
+def checkAverageColumnsIncrements(df:pd.DataFrame)->bool:
+    """
+        Evaluate if the mean value of each of the columns increases with the index of the column.
+    Args:
+        df (pd.DataFrame): Dataframe to evaluate.
+    Returns:
+        bool: True if the mean value increases with the index of the column.
+    """
     num_columns = df.shape[1]
 
     for column_index in range(1, num_columns):
@@ -139,13 +159,17 @@ def checkAverageColumnsIncrements(df):
 
     return True
 
-
-def checkCorrectFlowWEST(df):
-
+def checkCorrectFlowWEST(df:pd.DataFrame)->bool:
+    """
+        Sorts the columns by the index of their name and evaluates if the flow increases with it.
+    Args:
+        df (pd.DataFrame): Dataframe to evaluate.
+    Returns:
+        bool: True if the mean value increases with the index of the column.
+    """    
     df = sortColumnsWEST(df)
-
-    #remove the first data points coz is instable
-    df = df.iloc[20:,:]
+    
+    df = df.iloc[20:,:] #remove the first data points as this period is assumed to be unstable
 
     return checkAverageColumnsIncrements(df)
 
