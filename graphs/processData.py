@@ -89,7 +89,8 @@ def getDFWESTResults(filePath:str, startDate:'Timestamp', endDate:'Timestamp', d
         pd.DataFrame: Clean dataframe with values in m3/h.
     """    
     WTP_WEST_Results = pd.read_csv(filePath, delimiter = ',')
-    WTP_WEST_Results = WTP_WEST_Results.drop(WTP_WEST_Results.index[0]) #drops the row with units
+    WTP_WEST_Results.drop(WTP_WEST_Results.index[0],inplace=True) #drops the row with units
+    WTP_WEST_Results = WTP_WEST_Results.apply(pd.to_numeric, errors='coerce')
 
     #Calculates the dates to be used as index
     WTP_WEST_Results[WC.TIME_WEST] = WTP_WEST_Results[WC.TIME_WEST]-WTP_WEST_Results[WC.TIME_WEST].min() #In case the simulation in WEST was not started in day 0, it shifts the whole dataset to start at 0
@@ -126,7 +127,7 @@ def renameWEST(dfWEST:pd.DataFrame, dictRenames:dict[str,str]=None)->pd.DataFram
 def sortColumnsWEST(dfWEST:pd.DataFrame)->pd.DataFrame:
     """
         Sorts a dataframe by the index in the name of the columns. 
-        Columns are assumed to have the format "Element index"
+        Columns are assumed to have the format "index (direction)"
     Args:
         dfWEST (pd.DataFrame): Dataframe to be sorted.
     Returns:
