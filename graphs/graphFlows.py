@@ -5,21 +5,34 @@ import pandas as pd
 
 import matplotlib.pyplot as plt
 
-#Graph a whole DF as a time series #Deprecated
-def plotTimeSeries(df,fileOut,ppt=False,alpha=0.7,colorS=None,limsX=None,limsY=None,points=False):
-    
-    #For the label
-    df.columns = df.copy().columns.str.replace('(m³/h)','')
 
+def plotTimeSeries(df:pd.DataFrame,fileOut:str,ylabel:str,ppt:bool=False,alpha:float=0.7,
+                   colorS:list=None,limsX:tuple=None,limsY:tuple=None,points:bool=False)-> 'matplotlib.axes.Axes':
+    """
+        Graph a whole DF as a time series.
+    Args:
+        df (pd.DataFrame): Time series in each column.
+        fileOut (str): Path and name of the file where the created plot will be saved.
+        ylabel (str): Label title of the axis Y.
+        ppt (bool, optional): _description_. Defaults to False.
+        alpha (float, optional): Alpha of the lines in the plot. Defaults to 0.7.
+        colorS (list, optional): Colors of the lines in the plot. Defaults to None.
+        limsX (tuple, optional): Limits of the axis X. Defaults to None.
+        limsY (tuple, optional): Limits of the axis Y. Defaults to None.
+        points (bool, optional): True if the time series shoulf be drawn with points instead of lines. Defaults to False.
+    Returns:
+        matplotlib.axes.Axes: axes of the created plot.
+    """    
+    fig1, ax  = plt.subplots(figsize=(10,6)); #creates the figure
+    
     #plots the series of each column
-    fig1, ax  = plt.subplots(figsize=(14,6)); #creates the figure
-        
     if points:
-        df.plot(ax= ax,alpha=alpha,marker='.',linewidth=0,color=colorS);
+        df.plot(ax=ax, alpha=alpha, marker='.', linewidth=0, color=colorS); 
     elif colorS is None:
-        df.plot(ax= ax,alpha=alpha);
+        colorSeries = [cmlib._colormaps['viridis'](x) for x in np.linspace(0, 1,df.shape[1])]
+        df.plot(ax=ax, alpha=alpha, color=colorSeries);
     else:
-        df.plot(ax= ax,alpha=alpha,color=colorS);
+        df.plot(ax=ax, alpha=alpha, color=colorS);
         
     #For ppt
     if(ppt):
@@ -28,8 +41,7 @@ def plotTimeSeries(df,fileOut,ppt=False,alpha=0.7,colorS=None,limsX=None,limsY=N
     #Visual prettiness
     ax.legend(ncol=3,loc='upper center',bbox_to_anchor=(.5,-.18), framealpha=0);#puts the figure in the bottom center with 4 col
     util.removeTopRightFrame(ax)
-    
-    ax.set_ylabel("Flow rate (m³/h)")
+    ax.set_ylabel(ylabel)
     
     if limsX is not None:
         ax.set_xlim(limsX)
