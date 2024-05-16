@@ -18,6 +18,8 @@ TANK_INDEXES = 'tanksIndexes'
 FLOWRPERPERSON = "FlowPerPerson"
 TIMEPATTERN ='TimePattern'
 
+MAX_TANKS = 10
+
 SEWER_CLASS = 'Sewers Class'
 CATCH_CLASS = 'Catchments Class'
 CONN_CLASS = 'Connectors Class'
