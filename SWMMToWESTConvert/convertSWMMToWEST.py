@@ -86,6 +86,10 @@ def calculateSewerValues(pipeSection:'pd.DataFrame',shapeType: str)->tuple[float
     Lc = 0.4 * diam / slope   #m
     n1 = length/Lc  
     n = round(n1) if n1 >= 1 else 1
+
+    if n > STW_C.MAX_TANKS:
+        n = STW_C.MAX_TANKS
+
     ltank = length/n  #m
     
     c = (2*GRAVITY*diam*slope)**0.5    #m/d 

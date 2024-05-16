@@ -18,7 +18,8 @@ NO_WEST = "NO"
 STSACREMENT_WEST = "St-Sacrement"
 BEAUPORT_WEST = "Beauport"
 
-UNITS_FLOW = ' (m3/d)'
+UNITS_FLOW = 'm3/d'
+UNITS_TSS = 'g/m3'
 UNITS_GRAPH_FLOW = ' (m3/h)'
 
 
