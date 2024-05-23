@@ -98,8 +98,8 @@ def plotTwoTSeriesComparison(timeSeries1:pd.DataFrame, timeSeries2:pd.DataFrame,
     fig1, ax  = plt.subplots(figsize=(10,6)); #creates the figure
     colorD = util.light_hex_color(color)# Gets a ligther color 
 
-    timeSeries2.plot(ax=ax, alpha=0.8, linewidth=2, ls='--',color= colorD); # Plots the timeseries2 with a ligther color and a cutted line
-    timeSeries1.plot(ax=ax, alpha=0.8, linewidth=2 , color=color); #Plots the timeseries1 values
+    timeSeries2.plot(ax=ax, alpha=0.8, linewidth=3, ls='--',color= colorD); # Plots the timeseries2 with a ligther color and a cutted line
+    timeSeries1.plot(ax=ax, alpha=0.8, linewidth=3 , color=color); #Plots the timeseries1 values
     
     if adaptForDarkBackground:
         ax= util.modifyForPpt(ax)
@@ -110,7 +110,7 @@ def plotTwoTSeriesComparison(timeSeries1:pd.DataFrame, timeSeries2:pd.DataFrame,
 
     fig1.savefig(fileOut, dpi=200, bbox_inches='tight',transparent=True); #saves the fig
 
-def plotVariousComparisons(colsToCompare:list[list[str]], df1:pd.DataFrame, df2:pd.DataFrame, directoryOutput:str):
+def plotVariousComparisons(colsToCompare:list[list[str]], df1:pd.DataFrame, df2:pd.DataFrame, directoryOutput:str, ylabel:str):
     """
         Creates as many plots as elements in the colsToCompare. Each plot compares one of the timeseries (columns) of df1 with one of df2.
     Args:
@@ -118,13 +118,14 @@ def plotVariousComparisons(colsToCompare:list[list[str]], df1:pd.DataFrame, df2:
         df1 (pd.DataFrame): Each column is a time series. Index is datetime.
         df2 (pd.DataFrame): Each column is a time series. Index is datetime.
         directoryOutput (str): Path to the directory where the plots would be saved.
+        ylabel (str): Label of the Y axis of the graphs.
     """    
     colorSeries = [ cmlib._colormaps['plasma'](x) for x in np.linspace(0, 1,len(colsToCompare))]
 
     for p, c in zip(colsToCompare,colorSeries):
 
-        vals1 = df1[p[1]]
-        vals2 = df2[p[0]]
+        vals1 = df1[p[0]]
+        vals2 = df2[p[1]]
         file = directoryOutput + p[0] +'.png'
         
-        plotTwoTSeriesComparison(vals1,vals2,file,c,"Flow rate (m³/h)")
+        plotTwoTSeriesComparison(vals1,vals2,file,c,ylabel)
