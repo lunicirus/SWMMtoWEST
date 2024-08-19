@@ -65,7 +65,6 @@ def plotThreeTSeriesComparison(timeSeries1:pd.DataFrame, timeSeries2:pd.DataFram
         ylabel (str): Label to set on the y axis.
         adaptForDarkBackground (bool, optional): True if the plot will be used on a dark background, False otherwise. Defaults to False.
     """    
-    
     #'../02-Output/01-Graphs/'+'Comparison'
     
     fig1, ax  = plt.subplots(figsize=(10,6)); #creates the figure

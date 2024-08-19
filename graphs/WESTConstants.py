@@ -20,6 +20,7 @@ BEAUPORT_WEST = "Beauport"
 
 UNITS_FLOW = 'm3/d'
 UNITS_TSS = 'g/m3'
+UNITS_TSS_WELL = 'g/d'
 UNITS_GRAPH_FLOW = ' (m3/h)'
 
 

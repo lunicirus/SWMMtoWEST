@@ -4,6 +4,7 @@ import meassuresConstants as MC
 import PCSWMMConstants as PSC 
 import graphConstants as GC
 import WESTConstants as WC
+import re 
 
  
 def processMeassuredData(filePath:str, colsInLps:list[str], colsInm3h:list[str])->pd.DataFrame:
@@ -77,6 +78,30 @@ def processSWMMOutFlowData(filePath:str, startDate:'Timestamp', endDate:'Timesta
     
     return flowModelValsm3h
 
+def computeTotalTSSFromWell(df:pd.DataFrame)->pd.DataFrame:
+    """
+        Calculates the TSS values of a Well adding all the classes and dividing by the H2O.
+    Args:
+        df (pd.DataFrame): Values of TSS by classes (e.g. from 0 to 9) and H20 for various inputs or outputs.
+    Returns:
+        pd.DataFrame: TSS values in g/m3.
+    """    
+    dfTSSComputed = pd.DataFrame()
+    DENSITY_H2O_G = 1000000
+
+    wellsData = set(col.split('(')[0] for col in df.columns)
+    for wellData in wellsData:
+                
+        wellDataCols = [col for col in df.columns if col.startswith(wellData+"(TSS")] # Filter columns related to the current well and flow type
+
+        name = re.sub(r"\.Well_(\d+)\.(\w+)flow(\w*)", r"Well \1 (\2\3)", wellData)
+
+        # Sum the values across the TSS columns (g/d), divide by H2O (g/d) and adjust units to g/m3
+        dfTSSComputed[f"{name}"] = df[wellDataCols].sum(axis=1)/df[f"{wellData}(H2O)"]*DENSITY_H2O_G 
+
+    return dfTSSComputed
+        
+
 def getDFWESTResults(filePath:str, startDate:'Timestamp', endDate:'Timestamp', dictRenames:dict[str,str]=None)->tuple[pd.DataFrame, pd.DataFrame]:
     """
         Converts a csv file with flow values from WEST into a dataframe with values within evaluation time period.
@@ -111,6 +136,10 @@ def getDFWESTResults(filePath:str, startDate:'Timestamp', endDate:'Timestamp', d
     dfFlow = renameWEST(dfFlow.copy()) #Renames columns for the graph
     dfTSS = renameWEST(dfTSS.copy(),False) #Renames columns for the graph
    
+    #Obtaining TSS from Wells models
+    dfTSSWell = WTP_WEST_ResultsCut.loc[:, units == WC.UNITS_TSS_WELL]
+    dfTSS = dfTSS.join(computeTotalTSSFromWell(dfTSSWell))
+
     return dfFlow, dfTSS
 
 def renameWEST(dfWEST:pd.DataFrame, isFlow:bool=True, dictRenames:dict[str,str]=None)->pd.DataFrame:
