@@ -100,7 +100,7 @@ def lookForPath(finalDownstreamNode:str,initialNodeUpstream:str,links:'pd.DataFr
 
 
 #Could be replaced by using this swmmio.utils.functions.find_network_trace()
-def getPathToWTP(finalDownstreamNode:str,linksDF:'pd.DataFrame',leaves:list[str])-> dict[list[str]]:
+def getPathToWRRF(finalDownstreamNode:str,linksDF:'pd.DataFrame',leaves:list[str])-> dict[list[str]]:
     """
         Get all paths from leaves (end nodes or the network) to a specific final node (downstream the leaves), 
         starting at the leave and going downstream to the final node.

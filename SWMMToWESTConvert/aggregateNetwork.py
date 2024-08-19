@@ -17,7 +17,7 @@ import SWMMToWESTConvert.getNetworkFromSWMM as gnpd
 def findTrunk(idWRRF:str, outfile:str, links:pd.DataFrame, idTrunkIni:str=None)->pd.DataFrame:
     """
         Finds the trunk of the network. If the start point of the trunk is known then finds the path between that point and the WRRF.
-        If the start point is unknown then it selects the path with largest flow, starting from the WRRF.
+        Otherwise, it selects the path with largest flow, starting from the WRRF.
     Args:
         idWRRF (str): id name of the node in the .inp representing the entrance of the WRRF
         outfile (str): path of the .out file created by SWMM after running the model with the flowrate timeseries of the pipes
@@ -29,7 +29,7 @@ def findTrunk(idWRRF:str, outfile:str, links:pd.DataFrame, idTrunkIni:str=None)-
     if idTrunkIni is None:
         trunkDF = fp.findMainFlowPath(idWRRF,outfile,links) #Gets the path of the larges flow 
     else:
-        path = fp.getPathToWTP(idWRRF,links,[idTrunkIni]) #Get path as a list from leave to WRRF
+        path = fp.getPathToWRRF(idWRRF,links,[idTrunkIni]) #Get path as a list from leave to WRRF
         trunkDF = convertListPathtoDF(path[idTrunkIni],links) 
 
     return trunkDF
@@ -214,7 +214,7 @@ def getBreakPoints(pathDF: pd.DataFrame, relevantBranches:pd.DataFrame, nodesMea
 
     return linksToBreak
 
-def dividesPathByBreakPoints(linksPath:pd.DataFrame,linksToBreak:pd.DataFrame)-> tuple[list[pd.DataFrame],list[int]]:
+def dividePathByBreakPoints(linksPath:pd.DataFrame,linksToBreak:pd.DataFrame)-> tuple[list[pd.DataFrame],list[int]]:
     """
         Splits the path using the links to break.
     Args:
@@ -351,7 +351,7 @@ def modelPath(pathDF:pd.DataFrame, isTrunk:bool, links:pd.DataFrame, networkLook
         networkPatterns (dict[list]):Patterns of the network. 
         nTanks (int): Number of tanks already in the network.
     Returns:
-        tuple[pd.DataFrame,list[dict],list[dict],int]:  Connected pipes selected as relevant branches. Index is the name of the discharging pipe, columns are outnode and trunk pipe.
+        tuple[pd.DataFrame,list[dict],list[dict],int]: Connected pipes selected as relevant branches. Index is the name of the discharging pipe, columns are outnode and trunk pipe.
                                                     List of tank series models representing the path.
                                                     List of catchments models representing the path.
                                                     Current number of tanks in the network
@@ -360,7 +360,7 @@ def modelPath(pathDF:pd.DataFrame, isTrunk:bool, links:pd.DataFrame, networkLook
 
     #Gets the break points and divides the path in various sections (dfs)  
     linksToBreak = getBreakPoints(pathDF, relevantBranches, nodeMeasurementFlow)
-    pathDfs, indexbreakLinks = dividesPathByBreakPoints(pathDF,linksToBreak) 
+    pathDfs, indexbreakLinks = dividePathByBreakPoints(pathDF,linksToBreak) 
 
     #selects look points within the path using the outnode and aggregates them at the cut points
     pathWithLookPoints = getPathLookPoints(pathDF, networkLookNodes, pipesCatchments)

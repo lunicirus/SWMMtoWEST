@@ -1,4 +1,13 @@
 
+PERC_LIM_TO_BRANCH = 0.2 # Percentage from the trunk flow for a connecting pipe to be considered as a relevant branch
+
+
+FLOW_PER_PERSON = 0.4  #m3/d as in WEST
+
+
+MAX_TANKS = 10
+
+
 LINKS = "Links"
 LEAVES = "Leaves"
 SUBCATCHMENTS = "Catchments"
@@ -17,8 +26,6 @@ N_PEOPLE = 'NumberPeople'
 TANK_INDEXES = 'tanksIndexes'
 FLOWRPERPERSON = "FlowPerPerson"
 TIMEPATTERN ='TimePattern'
-
-MAX_TANKS = 10
 
 SEWER_CLASS = 'Sewers Class'
 CATCH_CLASS = 'Catchments Class'
@@ -50,7 +57,6 @@ PATH = 'PathTankInSeries'
 WCATCHMENTS = 'WESTCatchments' 
 TRUNK = 'Trunk'
 
-PERC_LIM_TO_BRANCH = 0.2 # Percentage from the trunk flow for a connecting pipe to be considered as a relevant branch
 
 # DIST_TO_LEAF = "DistanceToOriginLeaf"
 
