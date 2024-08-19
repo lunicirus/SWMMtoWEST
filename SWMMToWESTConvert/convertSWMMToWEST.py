@@ -9,8 +9,6 @@ import SWMMToWESTConvert.SWMM_InpConstants as SWMM_C
 VISCO = 1.0035*(10**-6)*60*60*24 #m2/d
 GRAVITY = 9.81*(60*60*24)**2  #m/d2 
 
-FLOW_PER_PERSON = 0.4  #m3/d as in WEST
-
 class ConvertionException(Exception):
     pass
 
@@ -39,7 +37,7 @@ def convertMeanSWMMFlowToNPeopleWEST(averageDWF:float)->int:
         int: number of people equivalent to the averageDWF.
     """    
     averageM3d = averageDWF * 86400 #SWMM 'average' is in m3/s 
-    npeople = math.ceil(averageM3d / FLOW_PER_PERSON) # flow per person is in m3/d as it is west
+    npeople = math.ceil(averageM3d / STW_C.FLOW_PER_PERSON) # flow per person is in m3/d as it is west
 
     return npeople
 
@@ -50,7 +48,7 @@ def convertTimeSeriesIntoDWF(ts:'pd.Series')->tuple[list[str],float]:
     Args:
         ts (pd.Series): Time series of flows in order (i.e., the first day starts at hour 0 and finises at hour 23).
     Returns:
-        tuple[list[str],float]: _description_ TODO
+        tuple[list[str],float]: Normalized hourly pattern in strings. Average flow of the time series.
     """    
     initialDate = ts.index[0]
     initialDateEvaluation = initialDate + timedelta(days=1) #it assumes that flow gets stable after one day!!
@@ -169,7 +167,7 @@ def createCatchmentWEST(name:str, element:dict, timePatterns:dict, isEnd:bool=Tr
         tPatternP = None
     
     catchment[STW_C.N_PEOPLE] = npeople
-    catchment[STW_C.FLOWRPERPERSON] = FLOW_PER_PERSON
+    catchment[STW_C.FLOWRPERPERSON] = STW_C.FLOW_PER_PERSON
     catchment[STW_C.TIMEPATTERN] = tPatternP
     
     #Attributes from direct flows --------------------------------
@@ -212,7 +210,7 @@ def createInputWEST(name:str,input:str,tsInputs:'pd.DataFrame',isEnd:bool=True)-
     inputWEST[STW_C.TIMEPATTERN] = tPatternP
     
     #Aux attributes ------------------------------
-    inputWEST[STW_C.FLOWRPERPERSON] = FLOW_PER_PERSON
+    inputWEST[STW_C.FLOWRPERPERSON] = STW_C.FLOW_PER_PERSON
     inputWEST[STW_C.END] = isEnd
     
     return inputWEST
