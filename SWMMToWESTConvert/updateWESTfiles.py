@@ -635,7 +635,7 @@ def setPathElementsProp(root:ET.Element, attrSewer:list[dict], attrCatch:list[di
       
     return root, namesDict, iCatchN, iCombN
     
-def updateWESTLayoutFile(layoutXMLPath:str, layoutXMLPath_MOD:str, modelClasses:dict[str], trunkModels:list[list[dict]],
+def updateWESTLayoutFile(layoutXMLPath:str, layoutXMLPath_MOD:str, modelClasses:dict[str], trunkModels:dict[list[dict]],
                          branchesModels:dict[dict[list[dict]]], connAttributes:dict[list[dict]]):
     """
         Updates the classes and atributes of all elements on a network, creating links between all elements.
@@ -643,7 +643,7 @@ def updateWESTLayoutFile(layoutXMLPath:str, layoutXMLPath_MOD:str, modelClasses:
         layoutXMLPath (str): Path to the XML file with the layout of the WEST model.
         layoutXMLPath_MOD (str): Path to where the modified layout file will be saved.
         modelClasses (dict[str]): Classes to be set to each type of model. Using Constants as keys e.g. STW_C.SEWER_CLASS, STW_C.CATCH_CLASS.
-        trunkModels (list[list[dict]]): Two lists reprenting the trunk of the network. One list has all sewer sections (as dictionaries) and the other all catchments. 
+        trunkModels (dict[list[dict]]): Two lists reprenting the trunk of the network. One list has all sewer sections (as dictionaries) and the other all catchments. 
         branchesModels (dict[dict[list[dict]]]): The keys are the name of the pipe that connects the branch and the trunk, the values are the attributes of the elements
                                            in the branch. Each branch dictionary has two elements one list of sewers, one list of the catchments (CONSTANTS as keys).
         connAttributes (list): Attributes of the connectors. all connectors have the same properties.
@@ -670,7 +670,7 @@ def updateWESTLayoutFile(layoutXMLPath:str, layoutXMLPath_MOD:str, modelClasses:
         combiners[br] = combName
         
     # Trunk
-    iLink, iCatch, iComb, root, linksXML, lastPathElement = addPathToLayoutFile(connAttributes[STW_C.TRUNK], trunkModels[0], trunkModels[1], 
+    iLink, iCatch, iComb, root, linksXML, lastPathElement = addPathToLayoutFile(connAttributes[STW_C.TRUNK], trunkModels[STW_C.PATH], trunkModels[STW_C.WCATCHMENTS], 
                                                                                 iLink, iCatch, iComb, root, linksXML, XMLsByType,combiners)
 
     print("The last element in the network was ", lastPathElement)

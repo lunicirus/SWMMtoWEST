@@ -376,7 +376,7 @@ def modelPath(pathDF:pd.DataFrame, isTrunk:bool, links:pd.DataFrame, networkLook
     return relevantBranches, branchModelsTanks, branchModelsCatch, nTanks
 
 def getTrunkModels(links:pd.DataFrame, networkLookNodes:pd.DataFrame, outfile:str, nodeMeasurementFlow:list[str], 
-                   patterns:dict[list], idWRRF:str, idTrunkIni:str=None)->tuple[list[str],tuple[list,list],int]:
+                   patterns:dict[list], idWRRF:str, idTrunkIni:str=None)->tuple[list[str],dict[list],pd.DataFrame,int]:
     """
         Find the trunk of the model, selects the relevant branches and converts the trunk and the selected branches into WEST models.
     Args:
@@ -388,8 +388,9 @@ def getTrunkModels(links:pd.DataFrame, networkLookNodes:pd.DataFrame, outfile:st
         idWRRF (str): Name in the .inp of the node representing the entrance of the WRRF.
         idTrunkIni (str,optional): Id name of the most upstream node of the trunk in the .inp. Defaults to None.
     Returns:
-        tuple[list[str],tuple[list,list],pd.DataFrame]: Names of the connecting pipes to the trunk that were selected as branches to model in detail.
+        tuple[list[str],dict[list],pd.DataFrame,int]: Names of the connecting pipes to the trunk that were selected as branches to model in detail.
                                                         Models representing the trunk with the list of tank series models and a list of catchments models.
+                                                        DF of links in the trunk of the network
                                                         Number of tanks created.
     """    
     print("-------------------------------Obtaining and modelling the Trunk -------------------------------------------------")
@@ -397,7 +398,11 @@ def getTrunkModels(links:pd.DataFrame, networkLookNodes:pd.DataFrame, outfile:st
 
     branches, trunkModelsTanks, trunkModelsCatch, nTanks = modelPath(trunkDF,True,links,networkLookNodes,outfile,nodeMeasurementFlow,patterns) 
 
-    return branches, [trunkModelsTanks,trunkModelsCatch], trunkDF, nTanks
+    trunkModels = {} 
+    trunkModels[STW_C.PATH] = trunkModelsTanks
+    trunkModels[STW_C.WCATCHMENTS] = trunkModelsCatch
+
+    return branches, trunkModels, trunkDF, nTanks
 
 def getBranchesModels(links:pd.DataFrame, networkLookNodes:pd.DataFrame, outfile:str, nodeMeasurementFlow:list[str], patterns:dict[list],
                       branches:pd.DataFrame, trunkPath: pd.DataFrame, nTanks:int)->dict[dict]:
