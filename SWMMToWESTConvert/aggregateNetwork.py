@@ -376,7 +376,7 @@ def modelPath(pathDF:pd.DataFrame, isTrunk:bool, links:pd.DataFrame, networkLook
     return relevantBranches, branchModelsTanks, branchModelsCatch, nTanks
 
 def getTrunkModels(links:pd.DataFrame, networkLookNodes:pd.DataFrame, outfile:str, nodeMeasurementFlow:list[str], 
-                   patterns:dict[list], idWRRF:str, idTrunkIni:str=None)->tuple[list[str],dict[list],pd.DataFrame,int]:
+                   patterns:dict[list], idWRRF:str, idTrunkIni:str=None)->tuple[list[str],dict[str,list[dict]],pd.DataFrame,int]:
     """
         Find the trunk of the model, selects the relevant branches and converts the trunk and the selected branches into WEST models.
     Args:
@@ -388,7 +388,7 @@ def getTrunkModels(links:pd.DataFrame, networkLookNodes:pd.DataFrame, outfile:st
         idWRRF (str): Name in the .inp of the node representing the entrance of the WRRF.
         idTrunkIni (str,optional): Id name of the most upstream node of the trunk in the .inp. Defaults to None.
     Returns:
-        tuple[list[str],dict[list],pd.DataFrame,int]: Names of the connecting pipes to the trunk that were selected as branches to model in detail.
+        tuple[list[str],dict[str,list[dict]],pd.DataFrame,int]: Names of the connecting pipes to the trunk that were selected as branches to model in detail.
                                                         Models representing the trunk with the list of tank series models and a list of catchments models.
                                                         DF of links in the trunk of the network
                                                         Number of tanks created.
@@ -442,7 +442,7 @@ def getBranchesModels(links:pd.DataFrame, networkLookNodes:pd.DataFrame, outfile
 
     return branchesModels
 
-def aggregateAndModelNetwork(networkInp:str, idWRRF:str, nodeMeasurementFlow:list[str],idTrunkIni:str= None)->tuple[tuple[list,list],dict[dict]]:  
+def aggregateAndModelNetwork(networkInp:str, idWRRF:str, nodeMeasurementFlow:list[str],idTrunkIni:str= None)->tuple[dict[str,list[dict]],dict[str,dict]]:  
     """
         Converts a detailed network given in the .inp on a list of tank in series and catchments for the trunk, and the same of each important branch.
         It uses the list of measurements flows as additional cut points in the trunk. It aggregates branches by flowrate.
@@ -452,7 +452,7 @@ def aggregateAndModelNetwork(networkInp:str, idWRRF:str, nodeMeasurementFlow:lis
         nodeMeasurementFlow (list[str]): List of node names where measurements are taken in the field
         idTrunkIni (str, optional): Id name of the most upstream node of the trunk in the .inp. Defaults to None.
     Returns:
-        tuple[tuple[list,list],dict[dict]]: A tuple representing the trunk with the list of tank series models and a list of catchments models.
+        tuple[dict[str,list[dict]],dict[str,dict]]: A dictionary representing the trunk with the list of tank series models and a list of catchments models.
                                             A dictonary with a dictionary for each branch. Each branch dictionary has a list of tank series models and a list of catchments models.
     """    
     networkElements, outfile = gnpd.getNetwork(networkInp) #Gets all the necesary elements from the network 

@@ -23,7 +23,7 @@ VMAX = 'Volmax'
 K = 'k'
 END = 'EndNode'
 N_PEOPLE = 'NumberPeople'
-TANK_INDEXES = 'tanksIndexes'
+TANK_INDEXES = 'TanksIndexes'
 FLOWRPERPERSON = "FlowPerPerson"
 TIMEPATTERN ='TimePattern'
 

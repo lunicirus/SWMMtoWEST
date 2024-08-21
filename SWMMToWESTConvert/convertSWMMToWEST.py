@@ -96,9 +96,9 @@ def calculateSewerValues(pipeSection:'pd.DataFrame',shapeType: str)->tuple[float
 
     #m2
     if shapeType == SWMM_C.CIRC:
-        area = math.pi * (diam**2)/4
+        area = math.pi * (diam**2)/4 # m2
     elif (shapeType == SWMM_C.REC) or (shapeType == SWMM_C.REC2):
-        area = diam**2
+        area = diam**2 # m2
     else:
         assert True
         area = 0
@@ -167,7 +167,7 @@ def createCatchmentWEST(name:str, element:dict, timePatterns:dict, isEnd:bool=Tr
         tPatternP = None
     
     catchment[STW_C.N_PEOPLE] = npeople
-    catchment[STW_C.FLOWRPERPERSON] = STW_C.FLOW_PER_PERSON
+    catchment[STW_C.FLOWRPERPERSON] = STW_C.FLOW_PER_PERSON #m3/d
     catchment[STW_C.TIMEPATTERN] = tPatternP
     
     #Attributes from direct flows --------------------------------
